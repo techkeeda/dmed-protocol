@@ -1,9 +1,11 @@
 /*
- * DMED — Dynamic MCP Discovery Protocol
- * C++ Library Header (dmed.hpp)
+ * DMED — Dynamic MCP Endpoint Discovery Protocol
+ * C++ Library Header (dmed.hpp) — v0.2.0
  *
- * Header-only, modern C++17. Type-safe beacon encode/decode + Card builder.
+ * Header-only, modern C++17. Type-safe beacon encode/decode + Card builder + Action client.
  * Zero heap allocation for beacon ops.
+ *
+ * v0.2: Added ActionRequest, ActionResponse, and Client class for interaction.
  *
  * Usage:
  *   #include "dmed.hpp"
@@ -18,9 +20,11 @@
 #include <vector>
 #include <optional>
 #include <array>
+#include <map>
 
 namespace dmed {
 
+constexpr const char* VERSION = "0.2.0";
 constexpr uint8_t PROTOCOL_VERSION = 1;
 constexpr size_t BEACON_MIN_SIZE = 6;
 constexpr size_t BEACON_MAX_SIZE = 9;
@@ -79,7 +83,7 @@ struct Card {
     std::vector<Tool> tools;
 
     std::string to_json() const {
-        std::string j="{\"dmed_version\":\"0.1.0\",\"instance_id\":\""+instance_id+"\",\"name\":\""+name+"\",\"service_type\":\""+service_type+"\",\"transports\":[";
+        std::string j="{\"dmed_version\":\""+std::string(VERSION)+"\",\"instance_id\":\""+instance_id+"\",\"name\":\""+name+"\",\"service_type\":\""+service_type+"\",\"transports\":[";
         for (size_t i=0;i<transports.size();i++){
             if(i)j+=",";
             j+="{\"type\":\""+transports[i].type+"\",\"url\":\""+transports[i].url+"\",\"priority\":"+std::to_string(transports[i].priority)+"}";
@@ -93,6 +97,28 @@ struct Card {
         return j;
     }
 };
+
+/* ─── v0.2: Action Interaction ─── */
+
+struct ActionRequest {
+    std::string action;
+    std::string params_json; /* JSON object as string, e.g. {"size":"large"} */
+
+    std::string to_json() const {
+        if (params_json.empty())
+            return "{\"action\":\""+action+"\",\"params\":{}}";
+        return "{\"action\":\""+action+"\",\"params\":"+params_json+"}";
+    }
+};
+
+struct ActionResponse {
+    bool ok = false;
+    std::string action;
+    std::string result_text;
+    std::string error_message;
+};
+
+/* ─── Utilities ─── */
 
 inline uint16_t crc16(const void* data, size_t len) {
     uint16_t crc=0xFFFF;

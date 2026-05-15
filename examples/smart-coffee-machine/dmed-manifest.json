@@ -1,5 +1,5 @@
 {
-  "dmed_version": "1.0",
+  "dmed_version": "0.2.0",
   "endpoint": {
     "id": "smart-coffee-machine-001",
     "name": "Smart Coffee Machine",

@@ -54,7 +54,8 @@ npm install && npm run scan
 
 ```
 ├── DMED_PROMPT.md                         # AI prompt library — feed to any AI tool
-├── DMED-protocol-spec-v0.1.md             # Protocol specification (overview)
+├── DMED-protocol-spec-v0.2.md             # Protocol specification v0.2 (current)
+├── DMED-protocol-spec-v0.1.md             # Protocol specification v0.1 (archived)
 ├── DMED-prior-art-research.md             # Prior art & research
 ├── spec/                                  # Full protocol specification
 │   ├── DMED-spec-v0.1.md                  # Core spec
@@ -90,7 +91,7 @@ npm install && npm run scan
 
 ## Specification
 
-The full protocol spec is in [`spec/DMED-spec-v0.1.md`](./spec/DMED-spec-v0.1.md) with appendices covering:
+The full protocol spec is in [`DMED-protocol-spec-v0.2.md`](./DMED-protocol-spec-v0.2.md) with appendices covering:
 
 - **Transport layers:** mDNS/DNS-SD, Bluetooth Low Energy, Internet/WAN
 - **Manifest schema:** JSON schema for `dmed-manifest.json`
@@ -107,7 +108,7 @@ The full protocol spec is in [`spec/DMED-spec-v0.1.md`](./spec/DMED-spec-v0.1.md
 
 ## Status
 
-🚧 **Draft Specification (v0.1)**
+🚧 **Draft Specification (v0.2)**
 
 This is an early-stage open protocol. Contributions, feedback, and ideas are welcome.
 
@@ -120,6 +121,7 @@ This is an early-stage open protocol. Contributions, feedback, and ideas are wel
 - [x] Reference libraries (C, C++, Python)
 - [x] AI prompt library for code generation
 - [x] Working examples (Node.js, Python, C)
+- [x] Interaction protocol (lightweight actions) — v0.2
 - [ ] Mobile client reference app
 - [ ] Security & authentication hardening
 - [ ] Protocol v1.0 finalization
@@ -136,4 +138,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 **Author:** Nilesh Valmik Ladhe  
 **Email:** worknileshladhe@gmail.com | *[secondary email — TBD]*  
-**Protocol Version:** 0.1 (Draft)
+**Protocol Version:** 0.2 (Draft)

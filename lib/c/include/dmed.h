@@ -1,9 +1,11 @@
 /*
- * DMED — Dynamic MCP Discovery Protocol
- * C Library Header (dmed.h)
+ * DMED — Dynamic MCP Endpoint Discovery Protocol
+ * C Library Header (dmed.h) — v0.2.0
  *
  * Single-header library. Zero heap allocation for beacon encode/decode.
  * Designed for embedded (ESP32, STM32, Linux, macOS).
+ *
+ * v0.2: Added action request/response structures for lightweight interaction.
  *
  * Usage:
  *   #define DMED_IMPLEMENTATION
@@ -24,7 +26,7 @@ extern "C" {
 
 /* ─── Version ─── */
 #define DMED_VERSION_MAJOR 0
-#define DMED_VERSION_MINOR 1
+#define DMED_VERSION_MINOR 2
 #define DMED_VERSION_PATCH 0
 #define DMED_PROTOCOL_VERSION 1
 
@@ -59,6 +61,12 @@ extern "C" {
 #define DMED_ST_ENERGY         0x11
 #define DMED_ST_CUSTOM         0xFF
 
+/* Action status codes */
+#define DMED_ACTION_OK         0
+#define DMED_ACTION_ERR_UNKNOWN   -1
+#define DMED_ACTION_ERR_PARAMS    -2
+#define DMED_ACTION_ERR_INTERNAL  -3
+
 /* ─── Structures ─── */
 
 typedef struct {
@@ -72,6 +80,19 @@ typedef struct {
     uint8_t  has_name_hash;
 } dmed_beacon_t;
 
+/* v0.2: Action request/response for lightweight interaction */
+typedef struct {
+    const char *action;     /* Tool/action name to invoke */
+    const char *params_json;/* JSON string of parameters (or NULL) */
+} dmed_action_request_t;
+
+typedef struct {
+    int status;             /* DMED_ACTION_OK or DMED_ACTION_ERR_* */
+    const char *action;     /* Echoed action name */
+    char result[1024];      /* Result text */
+    char error[256];        /* Error message if status != OK */
+} dmed_action_response_t;
+
 typedef enum {
     DMED_OK = 0,
     DMED_ERR_BUFFER_TOO_SMALL = -1,
@@ -81,42 +102,29 @@ typedef enum {
 
 /* ─── Beacon API ─── */
 
-/**
- * Encode a beacon into a byte buffer.
- * Returns number of bytes written, or negative dmed_error_t on failure.
- */
 int dmed_beacon_encode(const dmed_beacon_t *beacon, uint8_t *buf, size_t buf_len);
-
-/**
- * Decode a beacon from a byte buffer.
- * Returns DMED_OK on success, or negative dmed_error_t on failure.
- */
 int dmed_beacon_decode(const uint8_t *buf, size_t buf_len, dmed_beacon_t *beacon);
-
-/**
- * Compute CRC-16/CCITT for name hashing.
- */
 uint16_t dmed_crc16(const uint8_t *data, size_t len);
-
-/**
- * Generate instance_id from a unique string (CRC-32).
- */
 uint32_t dmed_instance_id_from_string(const char *str);
-
-/* ─── mDNS TXT record helpers ─── */
-
-/**
- * Format beacon fields into mDNS TXT key-value string.
- * Writes into buf: "v=1\0id=a1b2c3d4\0st=01\0fl=4\0"
- * Returns total bytes written (including null separators).
- */
 int dmed_mdns_txt_encode(const dmed_beacon_t *beacon, const char *name,
                         const char *mcp_path, const char *card_path,
                         char *buf, size_t buf_len);
-
-/* ─── Service type string conversion ─── */
 const char *dmed_service_type_str(uint8_t st);
 uint8_t dmed_service_type_from_str(const char *str);
+
+/* ─── v0.2: Action API ─── */
+
+/**
+ * Format an action request as JSON into buf.
+ * Returns bytes written or negative error.
+ */
+int dmed_action_format_request(const dmed_action_request_t *req, char *buf, size_t buf_len);
+
+/**
+ * Parse an action response from JSON.
+ * Returns DMED_OK on success.
+ */
+int dmed_action_parse_response(const char *json, size_t json_len, dmed_action_response_t *resp);
 
 #ifdef __cplusplus
 }
@@ -190,7 +198,6 @@ uint16_t dmed_crc16(const uint8_t *data, size_t len) {
 }
 
 uint32_t dmed_instance_id_from_string(const char *str) {
-    /* CRC-32 (ISO 3309) */
     uint32_t crc = 0xFFFFFFFF;
     while (*str) {
         crc ^= (uint8_t)*str++;
@@ -208,7 +215,7 @@ int dmed_mdns_txt_encode(const dmed_beacon_t *beacon, const char *name,
     #define APPEND(fmt, ...) do { \
         n = snprintf(buf + written, buf_len - written, fmt, ##__VA_ARGS__); \
         if (n < 0 || (size_t)(written + n) >= buf_len) return DMED_ERR_BUFFER_TOO_SMALL; \
-        written += n + 1; /* include null terminator as separator */ \
+        written += n + 1; \
     } while(0)
 
     APPEND("v=%d", beacon->version);
@@ -221,6 +228,52 @@ int dmed_mdns_txt_encode(const dmed_beacon_t *beacon, const char *name,
 
     #undef APPEND
     return written;
+}
+
+int dmed_action_format_request(const dmed_action_request_t *req, char *buf, size_t buf_len) {
+    if (!req || !req->action || !buf) return DMED_ERR_INVALID_DATA;
+    int n;
+    if (req->params_json) {
+        n = snprintf(buf, buf_len, "{\"action\":\"%s\",\"params\":%s}", req->action, req->params_json);
+    } else {
+        n = snprintf(buf, buf_len, "{\"action\":\"%s\",\"params\":{}}", req->action);
+    }
+    if (n < 0 || (size_t)n >= buf_len) return DMED_ERR_BUFFER_TOO_SMALL;
+    return n;
+}
+
+int dmed_action_parse_response(const char *json, size_t json_len, dmed_action_response_t *resp) {
+    if (!json || !resp) return DMED_ERR_INVALID_DATA;
+    memset(resp, 0, sizeof(*resp));
+    /* Minimal JSON parsing — look for "status":"ok" or "status":"error" */
+    if (strstr(json, "\"status\":\"ok\"") || strstr(json, "\"status\": \"ok\"")) {
+        resp->status = DMED_ACTION_OK;
+    } else {
+        resp->status = DMED_ACTION_ERR_INTERNAL;
+    }
+    /* Extract result text if present */
+    const char *txt = strstr(json, "\"text\":\"");
+    if (txt) {
+        txt += 8;
+        const char *end = strchr(txt, '"');
+        if (end) {
+            size_t len = (size_t)(end - txt);
+            if (len >= sizeof(resp->result)) len = sizeof(resp->result) - 1;
+            memcpy(resp->result, txt, len);
+        }
+    }
+    /* Extract error message if present */
+    const char *msg = strstr(json, "\"message\":\"");
+    if (msg) {
+        msg += 11;
+        const char *end = strchr(msg, '"');
+        if (end) {
+            size_t len = (size_t)(end - msg);
+            if (len >= sizeof(resp->error)) len = sizeof(resp->error) - 1;
+            memcpy(resp->error, msg, len);
+        }
+    }
+    return DMED_OK;
 }
 
 static const struct { uint8_t code; const char *str; } dmed_st_table[] = {

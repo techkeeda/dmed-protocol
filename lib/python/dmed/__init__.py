@@ -1,9 +1,9 @@
 """
-DMED — Dynamic MCP Discovery Protocol — Python Library
+DMED — Dynamic MCP Endpoint Discovery Protocol — Python Library
 Zero deps for core. Optional: zeroconf (mDNS), flask (server), requests (client)
 """
-__version__ = "0.1.0"
-__all__ = ["Beacon","Card","Tool","Transport","ServiceType","Flag","DMEDServer","DMEDScanner","crc16","crc32","instance_id_from"]
+__version__ = "0.2.0"
+__all__ = ["Beacon","Card","Tool","Transport","ServiceType","Flag","DMEDServer","DMEDScanner","DMEDClient","crc16","crc32","instance_id_from"]
 import struct,json
 from dataclasses import dataclass,field
 from typing import Optional,List,Dict,Any
@@ -80,7 +80,7 @@ class Card:
     def to_dict(self)->dict:
         d={"dmed_version":__version__,"instance_id":self.instance_id,"name":self.name,"service_type":self.service_type,
            "transports":[{"type":t.type,"url":t.url,"priority":t.priority}for t in self.transports],
-           "auth":{"type":self.auth_type},"capabilities":{"tools":[{"name":t.name,"description":t.description}for t in self.tools],"resources":[],"prompts":[]}}
+           "auth":{"type":self.auth_type},"capabilities":{"tools":[{"name":t.name,"description":t.description,"inputSchema":t.input_schema or{"type":"object","properties":{}}}for t in self.tools],"resources":[],"prompts":[]}}
         if self.description:d["description"]=self.description
         if self.tags:d["tags"]=self.tags
         if self.metadata:d["metadata"]=self.metadata
@@ -94,14 +94,14 @@ class Card:
                    description=d.get("description",""),
                    transports=[Transport(t["type"],t.get("url",""),t.get("priority",10))for t in d.get("transports",[])],
                    auth_type=d.get("auth",{}).get("type","none"),
-                   tools=[Tool(t["name"],t.get("description",""))for t in d.get("capabilities",{}).get("tools",[])],
+                   tools=[Tool(t["name"],t.get("description",""),t.get("inputSchema"))for t in d.get("capabilities",{}).get("tools",[])],
                    tags=d.get("tags",[]),metadata=d.get("metadata",{}))
 
     @classmethod
     def from_json(cls,s:str)->"Card":return cls.from_dict(json.loads(s))
 
 class DMEDServer:
-    """Full DMED server. Requires: pip install zeroconf flask"""
+    """Full DMED server with discovery + interaction. Requires: pip install zeroconf flask"""
     def __init__(self,card:Card,port:int=8080,tool_handler=None):
         self.card=card;self.port=port;self._h=tool_handler or(lambda n,a:f"No handler for {n}")
 
@@ -124,14 +124,32 @@ class DMEDServer:
         @app.route("/mcp",methods=["POST"])
         def _m():
             r=req.get_json();m=r.get("method");rid=r.get("id")
-            if m=="initialize":return jsonify({"jsonrpc":"2.0","id":rid,"result":{"protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":self.card.name,"version":"1.0.0"}}})
+            if m=="initialize":return jsonify({"jsonrpc":"2.0","id":rid,"result":{"protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":self.card.name,"version":__version__}}})
             if m=="notifications/initialized":return"",204
             if m=="tools/list":return jsonify({"jsonrpc":"2.0","id":rid,"result":{"tools":[{"name":t.name,"description":t.description,"inputSchema":t.input_schema or{"type":"object","properties":{}}}for t in self.card.tools]}})
             if m=="tools/call":
                 try:res=self._h(r["params"]["name"],r["params"].get("arguments",{}));return jsonify({"jsonrpc":"2.0","id":rid,"result":{"content":[{"type":"text","text":str(res)}]}})
                 except Exception as e:return jsonify({"jsonrpc":"2.0","id":rid,"error":{"code":-32603,"message":str(e)}})
             return jsonify({"jsonrpc":"2.0","id":rid,"error":{"code":-32601,"message":f"Unknown: {m}"}})
+        # v0.2: Lightweight action endpoint
+        @app.route("/dmed/action",methods=["POST"])
+        def _action():
+            r=req.get_json()
+            action=r.get("action");params=r.get("params",{})
+            if not action:return jsonify({"status":"error","message":"Missing 'action' field"}),400
+            tool_names=[t.name for t in self.card.tools]
+            if action not in tool_names:return jsonify({"status":"error","message":f"Unknown action: {action}. Available: {tool_names}"}),404
+            try:
+                res=self._h(action,params)
+                return jsonify({"status":"ok","action":action,"result":{"text":str(res)}})
+            except Exception as e:return jsonify({"status":"error","action":action,"message":str(e)}),500
+        @app.route("/dmed/actions")
+        def _actions():return jsonify({"actions":[{"name":t.name,"description":t.description,"params":t.input_schema or{"type":"object","properties":{}}}for t in self.card.tools]})
         print(f"[DMED] ✓ {self.card.name} at {ip}:{self.port}")
+        print(f"[DMED]   Card:    http://{ip}:{self.port}/dmed/card")
+        print(f"[DMED]   Actions: http://{ip}:{self.port}/dmed/actions")
+        print(f"[DMED]   Invoke:  POST http://{ip}:{self.port}/dmed/action")
+        print(f"[DMED]   MCP:     POST http://{ip}:{self.port}/mcp")
         try:app.run(host="0.0.0.0",port=self.port)
         finally:zc.unregister_all_services();zc.close()
 
@@ -141,9 +159,51 @@ class DMEDServer:
         try:s.connect(("8.8.8.8",80));return s.getsockname()[0]
         finally:s.close()
 
+class DMEDClient:
+    """v0.2: Interact with a discovered DMED endpoint. Requires: pip install requests"""
+    def __init__(self,base_url:str,auth_token:str=None):
+        self.base_url=base_url.rstrip("/")
+        self._headers={"Content-Type":"application/json"}
+        if auth_token:self._headers["Authorization"]=f"Bearer {auth_token}"
+        self._card:Optional[Card]=None
+
+    def connect(self)->Card:
+        """Fetch the endpoint's card (capabilities)."""
+        import requests
+        r=requests.get(f"{self.base_url}/dmed/card",headers=self._headers,timeout=5)
+        r.raise_for_status()
+        self._card=Card.from_dict(r.json())
+        return self._card
+
+    def list_actions(self)->List[Dict]:
+        """List available actions on the endpoint."""
+        import requests
+        r=requests.get(f"{self.base_url}/dmed/actions",headers=self._headers,timeout=5)
+        r.raise_for_status()
+        return r.json()["actions"]
+
+    def send_action(self,action:str,params:Dict[str,Any]=None)->Dict:
+        """Send a lightweight action/command to the endpoint."""
+        import requests
+        payload={"action":action,"params":params or{}}
+        r=requests.post(f"{self.base_url}/dmed/action",json=payload,headers=self._headers,timeout=10)
+        r.raise_for_status()
+        return r.json()
+
+    def call_tool(self,tool_name:str,arguments:Dict[str,Any]=None)->Dict:
+        """Full MCP tools/call (JSON-RPC). Use send_action() for lightweight interaction."""
+        import requests
+        payload={"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":tool_name,"arguments":arguments or{}}}
+        r=requests.post(f"{self.base_url}/mcp",json=payload,headers=self._headers,timeout=10)
+        r.raise_for_status()
+        return r.json().get("result",{})
+
+    @property
+    def card(self)->Optional[Card]:return self._card
+
 class DMEDScanner:
-    """Scan for DMED servers. Requires: pip install zeroconf requests"""
-    def __init__(self):self.servers:Dict[str,Card]={}
+    """Scan for DMED endpoints. Requires: pip install zeroconf requests"""
+    def __init__(self):self.endpoints:Dict[str,Card]={}
     def scan(self,timeout:float=5.0)->Dict[str,Card]:
         import socket,time,requests
         from zeroconf import Zeroconf,ServiceBrowser,ServiceListener
@@ -154,10 +214,16 @@ class DMEDScanner:
                 if not info:return
                 h=socket.inet_ntoa(info.addresses[0]);p=info.port
                 props={k.decode():v.decode()for k,v in info.properties.items()}
-                try:card=Card.from_dict(requests.get(f"http://{h}:{p}{props.get('card','/dmed/card')}",timeout=3).json());sc.servers[card.instance_id]=card
+                try:card=Card.from_dict(requests.get(f"http://{h}:{p}{props.get('card','/dmed/card')}",timeout=3).json());sc.endpoints[card.instance_id]=card
                 except:pass
             def remove_service(self,*a):pass
             def update_service(self,*a):pass
         zc=Zeroconf();ServiceBrowser(zc,"_mcp-dmed._tcp.local.",L())
         time.sleep(timeout);zc.close()
-        return self.servers
+        return self.endpoints
+
+    def connect(self,instance_id:str)->Optional["DMEDClient"]:
+        """Connect to a discovered endpoint by instance_id. Returns a DMEDClient."""
+        card=self.endpoints.get(instance_id)
+        if not card or not card.transports:return None
+        return DMEDClient(card.transports[0].url)
