@@ -63,7 +63,7 @@ Serve a JSON file at `https://api.example.com/.well-known/dmed/card`:
 
 ```json
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "f1e2d3c4",
   "name": "My AI Service",
   "description": "Text generation and summarization API",

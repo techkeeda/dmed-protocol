@@ -35,7 +35,7 @@ kitchen-light.local. 120 IN A 192.168.1.42
 **Capability Card (served at http://192.168.1.42:8080/dmed/card):**
 ```json
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "a1b2c3d4",
   "name": "Kitchen Light",
   "description": "RGBW smart bulb with dimming and color temperature control",
@@ -197,7 +197,7 @@ joes-kiosk.local. 120 IN A 10.0.0.5
 **Capability Card:**
 ```json
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "cafe0001",
   "name": "Joe's Coffee — Order & Menu",
   "description": "Browse our menu, place orders, and check order status",
@@ -280,7 +280,7 @@ _dmed.api.smartllm.example.com. 3600 IN TXT "v=1;id=llm00001;st=08;fl=3;url=http
 
 ```json
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "llm00001",
   "name": "SmartLLM API",
   "description": "General-purpose language model with text generation, summarization, and translation",
@@ -372,7 +372,7 @@ cnc7.factory.local. 120 IN A 172.16.0.107
 
 ```json
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "cnc70001",
   "name": "CNC Machine 7 — Telemetry",
   "description": "Real-time telemetry and diagnostics for CNC milling machine #7",

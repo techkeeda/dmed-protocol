@@ -1,12 +1,13 @@
-# DMED C++ Library
+# DMED C++ Library (v0.2)
 
-Header-only C++17 library for DMED beacon encode/decode and Capability Card generation.
+Header-only C++17 library for DMED beacon encode/decode, Capability Card generation, and action interaction.
 
 ## Features
 - **Header-only** — just `#include "dmed.hpp"`
 - **Zero heap for beacons** — stack-only encode/decode
 - **Type-safe** — enums for ServiceType, std::optional for optional fields
 - **Card builder** — generates valid JSON without external JSON library
+- **v0.2: ActionRequest/Response** — structs for lightweight interaction
 - **~3KB compiled**
 
 ## Install
@@ -41,4 +42,19 @@ std::string json = card.to_json();
 ```bash
 cd src
 g++ -std=c++17 -o dmed_test dmed_test.cpp -I../include && ./dmed_test
+```
+
+## v0.2: Action Interaction
+
+```cpp
+#include "dmed.hpp"
+using namespace dmed;
+
+// Build action request
+ActionRequest req{.action = "brew_coffee", .params_json = R"({"size":"large"})"};
+std::string body = req.to_json();
+// → POST body to http://<endpoint>/dmed/action
+
+// Parse response (after HTTP call)
+ActionResponse resp{.ok = true, .action = "brew_coffee", .result_text = "☕ Ready!"};
 ```

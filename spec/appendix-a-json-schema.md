@@ -5,7 +5,7 @@ This is the normative JSON Schema for DMED Capability Cards. Implementations MUS
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dmed-protocol.org/schema/capability-card/v0.1.0",
+  "$id": "https://dmed-protocol.org/schema/capability-card/v0.2.0",
   "title": "DMED Capability Card",
   "description": "Describes a DMED server's identity, transports, authentication, and MCP capabilities.",
   "type": "object",

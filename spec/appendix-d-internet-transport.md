@@ -71,7 +71,7 @@ Access-Control-Allow-Methods: GET, OPTIONS
 Access-Control-Allow-Headers: Accept
 
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "f1e2d3c4",
   "name": "Example AI Service",
   "service_type": "ai_service",

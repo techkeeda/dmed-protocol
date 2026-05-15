@@ -186,6 +186,47 @@ Convert enum to string: `ServiceType::IotDevice` → `"iot_device"`.
 
 ---
 
+---
+
+## v0.2: Action Interaction
+
+### `ActionRequest`
+
+```cpp
+struct ActionRequest {
+    std::string action;        // Tool/action name
+    std::string params_json;   // JSON object as string, e.g. {"size":"large"}
+
+    std::string to_json() const;
+};
+```
+
+#### `ActionRequest::to_json`
+
+Serialize to JSON for sending to endpoint via `POST /dmed/action`.
+
+```cpp
+ActionRequest req{.action = "brew_coffee", .params_json = R"({"size":"large"})"};
+std::string body = req.to_json();
+// {"action":"brew_coffee","params":{"size":"large"}}
+// → POST this to http://<endpoint>/dmed/action
+```
+
+### `ActionResponse`
+
+```cpp
+struct ActionResponse {
+    bool ok = false;           // true if status == "ok"
+    std::string action;        // Echoed action name
+    std::string result_text;   // Result text on success
+    std::string error_message; // Error message on failure
+};
+```
+
+Parse from the HTTP response body after sending an action.
+
+---
+
 ## Memory & Performance
 
 - **Zero heap for beacons** — encode/decode uses only stack + caller buffer

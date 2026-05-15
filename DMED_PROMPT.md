@@ -2,7 +2,7 @@
 
 ## Instructions for AI Tools
 
-You are helping a user make their service, device, or application discoverable as an **MCP endpoint** via the **DMED (Dynamic MCP Endpoint Discovery) Protocol**. DMED allows MCP endpoints to broadcast their capabilities over local network transports (WiFi/mDNS, Bluetooth, Ethernet) so that any DMED-compatible client app can automatically find and interact with them via AI.
+You are helping a user make their service, device, or application discoverable as an **MCP endpoint** via the **DMED (Dynamic MCP Endpoint Discovery) Protocol v0.2**. DMED allows MCP endpoints to broadcast their capabilities over local network transports (WiFi/mDNS, Bluetooth, Ethernet) so that any DMED-compatible client app can automatically discover, connect, and interact with them via AI.
 
 ---
 
@@ -13,10 +13,22 @@ When a user describes what they want to make discoverable, you must:
 1. **Create an MCP endpoint** that exposes the described functionality as tools
 2. **Add DMED discovery broadcasting** so clients can find it automatically
 3. **Generate a DMED manifest** describing the endpoint's capabilities
+4. **Expose the interaction API** (`/dmed/action`, `/dmed/actions`) for lightweight command execution
 
 ---
 
-## DMED Protocol Specification
+## DMED Protocol Specification (v0.2)
+
+### Protocol Lifecycle
+
+```
+Discover → Connect → Interact → Disconnect
+```
+
+1. **Discover** — Endpoint broadcasts via mDNS (`_dmed._tcp`) or BLE
+2. **Connect** — Client fetches `GET /dmed/card` to learn capabilities
+3. **Interact** — Client sends actions via `POST /dmed/action` (lightweight) or `POST /mcp` (full MCP)
+4. **Disconnect** — Client stops sending requests (stateless, no handshake needed)
 
 ### DMED Manifest (dmed-manifest.json)
 
@@ -24,7 +36,7 @@ Every DMED-enabled MCP endpoint must have a manifest:
 
 ```json
 {
-  "dmed_version": "1.0",
+  "dmed_version": "0.2.0",
   "endpoint": {
     "id": "<unique-endpoint-id>",
     "name": "<human-readable-name>",
@@ -60,6 +72,43 @@ Every DMED-enabled MCP endpoint must have a manifest:
 }
 ```
 
+### HTTP API (Required for v0.2 compliance)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/dmed/card` | Fetch endpoint capabilities |
+| GET | `/dmed/actions` | List available actions with param schemas |
+| POST | `/dmed/action` | Send a lightweight action/command |
+| POST | `/mcp` | Full MCP JSON-RPC endpoint |
+
+### Action Request/Response Format
+
+**Request** (`POST /dmed/action`):
+```json
+{
+  "action": "<tool-name>",
+  "params": { "<key>": "<value>" }
+}
+```
+
+**Success Response:**
+```json
+{
+  "status": "ok",
+  "action": "<tool-name>",
+  "result": { "text": "<result-text>" }
+}
+```
+
+**Error Response:**
+```json
+{
+  "status": "error",
+  "action": "<tool-name>",
+  "message": "<error-description>"
+}
+```
+
 ### Discovery Broadcasting
 
 #### mDNS/DNS-SD (WiFi/Ethernet)
@@ -68,7 +117,7 @@ Broadcast using service type `_dmed._tcp` with TXT records:
 
 | TXT Record     | Value                           |
 |----------------|---------------------------------|
-| `dmed_version` | `1.0`                           |
+| `dmed_version` | `0.2.0`                         |
 | `name`         | Endpoint display name           |
 | `description`  | Short description               |
 | `category`     | Endpoint category               |
@@ -89,7 +138,7 @@ When generating code, use this structure:
 ```
 project/
 ├── dmed-manifest.json
-├── server.js          # MCP endpoint + DMED broadcasting
+├── server.js          # MCP endpoint + DMED broadcasting + action API
 ├── package.json
 └── README.md
 ```
@@ -100,7 +149,8 @@ project/
 {
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "bonjour-service": "^1.2.0"
+    "bonjour-service": "^1.2.0",
+    "express": "^4.21.0"
   }
 }
 ```
@@ -111,6 +161,7 @@ project/
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import Bonjour from "bonjour-service";
+import express from "express";
 import { readFileSync } from "fs";
 import { networkInterfaces } from "os";
 
@@ -126,7 +177,11 @@ const server = new McpServer({
 // TOOLS GO HERE — generate based on user's requirements
 // server.tool("tool_name", "description", { ...schema }, async (params) => { ... });
 
-// --- DMED Discovery Broadcasting ---
+// --- Tool handler map (for action API) ---
+const toolHandlers = {};
+// toolHandlers["tool_name"] = async (params) => { return "result"; };
+
+// --- HTTP API (DMED v0.2) ---
 function getLocalIP() {
   const interfaces = networkInterfaces();
   for (const iface of Object.values(interfaces)) {
@@ -137,19 +192,53 @@ function getLocalIP() {
   return "127.0.0.1";
 }
 
-const bonjour = new Bonjour();
 const localIP = getLocalIP();
+const port = manifest.transport.mdns.port;
+const app = express();
+app.use(express.json());
 
+// GET /dmed/card — Capability Card
+app.get("/dmed/card", (req, res) => res.json(manifest));
+
+// GET /dmed/actions — List available actions
+app.get("/dmed/actions", (req, res) => {
+  res.json({
+    actions: manifest.capabilities.tools.map(t => ({
+      name: t.name, description: t.description, params: t.inputSchema
+    }))
+  });
+});
+
+// POST /dmed/action — Lightweight action invocation
+app.post("/dmed/action", async (req, res) => {
+  const { action, params } = req.body;
+  if (!action) return res.status(400).json({ status: "error", message: "Missing 'action' field" });
+  const handler = toolHandlers[action];
+  if (!handler) return res.status(404).json({ status: "error", action, message: `Unknown action: ${action}` });
+  try {
+    const result = await handler(params || {});
+    res.json({ status: "ok", action, result: { text: String(result) } });
+  } catch (e) {
+    res.status(500).json({ status: "error", action, message: e.message });
+  }
+});
+
+app.listen(port, () => {
+  console.error(`[DMED] Endpoints at http://${localIP}:${port}`);
+});
+
+// --- DMED Discovery Broadcasting ---
+const bonjour = new Bonjour();
 bonjour.publish({
   name: manifest.endpoint.name,
   type: "dmed",
-  port: manifest.transport.mdns.port,
+  port,
   txt: {
     dmed_version: manifest.dmed_version,
     name: manifest.endpoint.name,
     description: manifest.endpoint.description,
     category: manifest.endpoint.category,
-    manifest_url: `http://${localIP}:${manifest.transport.mdns.port}/dmed-manifest.json`,
+    manifest_url: `http://${localIP}:${port}/dmed/card`,
   },
 });
 
@@ -178,14 +267,15 @@ Tell the AI:
 
 ## Rules for the AI
 
-1. Always generate a complete `dmed-manifest.json` first
+1. Always generate a complete `dmed-manifest.json` first (with `dmed_version: "0.2.0"`)
 2. Generate a working MCP endpoint with all tools implemented
-3. Include mDNS broadcasting by default
-4. Add Bluetooth BLE advertising if the user mentions mobile/Bluetooth
-5. Use the user's language/platform preference (Node.js default, Python if requested)
-6. Include a README with setup instructions
-7. Keep the implementation minimal and functional
-8. Use secure defaults (token auth if the endpoint handles sensitive data)
+3. Expose all 4 HTTP endpoints: `/dmed/card`, `/dmed/actions`, `/dmed/action`, `/mcp`
+4. Include mDNS broadcasting by default
+5. Add Bluetooth BLE advertising if the user mentions mobile/Bluetooth
+6. Use the user's language/platform preference (Node.js default, Python if requested)
+7. Include a README with setup instructions
+8. Keep the implementation minimal and functional
+9. Use secure defaults (token auth if the endpoint handles sensitive data)
 
 ---
 
@@ -194,40 +284,33 @@ Tell the AI:
 If the user prefers Python:
 
 ```python
-from mcp.server import Server
-from zeroconf import ServiceInfo, Zeroconf
-import socket, json
+from dmed import Card, Tool, Transport, DMEDServer
 
-manifest = json.load(open("dmed-manifest.json"))
-
-# MCP Endpoint
-server = Server(manifest["endpoint"]["name"])
-
-# DMED Broadcasting
-zc = Zeroconf()
-info = ServiceInfo(
-    "_dmed._tcp.local.",
-    f"{manifest['endpoint']['name']}._dmed._tcp.local.",
-    addresses=[socket.inet_aton(socket.gethostbyname(socket.gethostname()))],
-    port=manifest["transport"]["mdns"]["port"],
-    properties={
-        "dmed_version": manifest["dmed_version"],
-        "name": manifest["endpoint"]["name"],
-        "description": manifest["endpoint"]["description"],
-        "category": manifest["endpoint"]["category"],
-    },
+# Define endpoint
+card = Card(
+    instance_id="<generated-id>",
+    name="<endpoint-name>",
+    service_type="<category>",
+    description="<description>",
+    transports=[Transport("http")],
+    tools=[
+        Tool("<tool-name>", "<description>", {"type": "object", "properties": {...}}),
+    ]
 )
-zc.register_service(info)
 
-# Register tools based on user requirements
-# @server.tool()
-# async def tool_name(params): ...
+# Implement tool logic
+def handle(name, args):
+    if name == "<tool-name>":
+        return "<result>"
+
+# Start — auto-registers mDNS + exposes /dmed/card, /dmed/actions, /dmed/action, /mcp
+DMEDServer(card, port=8080, tool_handler=handle).start()
 ```
 
 ---
 
 ## Version
 
-DMED Protocol Version: 1.0 (Draft)
-Author: Nilesh
+DMED Protocol Version: 0.2 (Draft)
+Author: Nilesh Valmik Ladhe
 License: Open specification

@@ -265,6 +265,102 @@ for instance_id, card in servers.items():
 
 ---
 
+---
+
+## v0.2: Interaction API
+
+### `DMEDClient`
+
+Connect to and interact with a discovered DMED endpoint.
+
+**Requires:** `pip install requests`
+
+```python
+class DMEDClient:
+    def __init__(self, base_url: str, auth_token: str = None): ...
+    def connect(self) -> Card: ...
+    def list_actions(self) -> List[Dict]: ...
+    def send_action(self, action: str, params: Dict = None) -> Dict: ...
+    def call_tool(self, tool_name: str, arguments: Dict = None) -> Dict: ...
+```
+
+#### `DMEDClient.connect() → Card`
+
+Fetch the endpoint's Capability Card.
+
+```python
+from dmed import DMEDClient
+
+client = DMEDClient("http://192.168.1.42:8080")
+card = client.connect()
+print(f"Connected to: {card.name}")
+print(f"Tools: {[t.name for t in card.tools]}")
+```
+
+#### `DMEDClient.list_actions() → List[Dict]`
+
+List available actions with their parameter schemas.
+
+```python
+actions = client.list_actions()
+for a in actions:
+    print(f"  {a['name']} — {a['description']}")
+```
+
+#### `DMEDClient.send_action(action, params) → Dict`
+
+Send a lightweight action/command. This is the primary interaction method.
+
+```python
+result = client.send_action("brew_coffee", {"drink_type": "latte", "size": "large"})
+# {"status": "ok", "action": "brew_coffee", "result": {"text": "☕ Your large latte is ready."}}
+```
+
+#### `DMEDClient.call_tool(tool_name, arguments) → Dict`
+
+Full MCP JSON-RPC `tools/call`. Use `send_action()` for lightweight interaction.
+
+```python
+result = client.call_tool("brew_coffee", {"drink_type": "latte", "size": "large"})
+# {"content": [{"type": "text", "text": "☕ Your large latte is ready."}]}
+```
+
+---
+
+### `DMEDScanner.connect(instance_id) → DMEDClient`
+
+After scanning, connect directly to a discovered endpoint:
+
+```python
+from dmed import DMEDScanner
+
+scanner = DMEDScanner()
+endpoints = scanner.scan(timeout=5)
+
+# Connect to first found endpoint
+first_id = list(endpoints.keys())[0]
+client = scanner.connect(first_id)
+card = client.connect()
+result = client.send_action("get_status")
+```
+
+---
+
+### Server: Action Endpoints (auto-registered)
+
+`DMEDServer` in v0.2 automatically exposes:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/dmed/card` | GET | Capability Card |
+| `/dmed/actions` | GET | List actions with param schemas |
+| `/dmed/action` | POST | Send lightweight action |
+| `/mcp` | POST | Full MCP JSON-RPC |
+
+No extra code needed — if you have a `DMEDServer` with a `tool_handler`, all endpoints work automatically.
+
+---
+
 ## Memory & Performance
 
 - **Core module:** ~8KB source, pure Python

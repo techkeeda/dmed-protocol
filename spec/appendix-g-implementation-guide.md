@@ -37,7 +37,7 @@ CARD_PATH = "/dmed/card"
 
 # === Capability Card ===
 CAPABILITY_CARD = {
-    "dmed_version": "0.1.0",
+    "dmed_version": "0.2.0",
     "instance_id": INSTANCE_ID,
     "name": SERVER_NAME,
     "description": "A simple DMED-enabled tool server",
@@ -292,7 +292,7 @@ def call_tool(mcp_url, tool_name, arguments):
         "params": {
             "protocolVersion": "2025-03-26",
             "capabilities": {},
-            "clientInfo": {"name": "DMED CLI Client", "version": "0.1.0"}
+            "clientInfo": {"name": "DMED CLI Client", "version": "0.2.0"}
         }
     })
 

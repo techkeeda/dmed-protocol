@@ -22,7 +22,7 @@ def get_local_ip():
 def card():
     host = request.host.split(":")[0]
     return jsonify({
-        "dmed_version": "0.1.0", "instance_id": INSTANCE_ID,
+        "dmed_version": "0.2.0", "instance_id": INSTANCE_ID,
         "name": SERVER_NAME, "service_type": "tool_utility",
         "transports": [{"type": "http", "url": f"http://{host}:{PORT}/mcp", "priority": 1}],
         "auth": {"type": "none"},

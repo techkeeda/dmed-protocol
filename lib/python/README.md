@@ -1,6 +1,6 @@
 # DMED Python Library
 
-Lightweight Python library for DMED protocol — beacon encode/decode, capability cards, server & scanner.
+Lightweight Python library for DMED protocol — beacon encode/decode, capability cards, server, scanner & client.
 
 ## Install
 
@@ -29,14 +29,43 @@ def handle(name, args):
 DMEDServer(card, port=8080, tool_handler=handle).start()
 ```
 
-## Usage — Scanner (3 lines)
+Server automatically exposes:
+- `GET /dmed/card` — Capability Card
+- `GET /dmed/actions` — List actions with param schemas
+- `POST /dmed/action` — Lightweight action invocation
+- `POST /mcp` — Full MCP JSON-RPC
+
+## Usage — Client (v0.2)
+
+```python
+from dmed import DMEDClient
+
+client = DMEDClient("http://192.168.1.42:8080")
+card = client.connect()
+print(f"Connected to: {card.name}")
+
+# List what's available
+actions = client.list_actions()
+
+# Send an action
+result = client.send_action("toggle")
+print(result)  # {"status": "ok", "action": "toggle", "result": {"text": "toggled"}}
+```
+
+## Usage — Scanner + Connect
 
 ```python
 from dmed import DMEDScanner
 
-servers = DMEDScanner().scan(timeout=5)
-for iid, card in servers.items():
+scanner = DMEDScanner()
+endpoints = scanner.scan(timeout=5)
+for iid, card in endpoints.items():
     print(f"{card.name}: {[t.name for t in card.tools]}")
+
+# Connect to first endpoint
+client = scanner.connect(list(endpoints.keys())[0])
+client.connect()
+client.send_action("get_status")
 ```
 
 ## Usage — Beacon (no deps)
@@ -57,6 +86,6 @@ print(b2.instance_id_hex)  # "a1b2c3d4"
 
 ## Memory / Size
 
-- Core module: ~6KB source, zero allocations for beacon ops
+- Core module: ~8KB source, zero allocations for beacon ops
 - No C extensions needed — pure Python
 - Works on CPython, PyPy, MicroPython (beacon subset)

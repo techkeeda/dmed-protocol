@@ -109,13 +109,26 @@ avahi-browse -r _mcp-dmed._tcp
 # Or directly fetch the card
 curl http://localhost:8080/dmed/card | jq .
 
-# Call a tool
+# List available actions (v0.2)
+curl http://localhost:8080/dmed/actions | jq .
+
+# Send a lightweight action (v0.2)
+curl -X POST http://localhost:8080/dmed/action \
+  -H "Content-Type: application/json" \
+  -d '{"action":"add","params":{"a":5,"b":3}}'
+
+# Or use full MCP JSON-RPC
 curl -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"add","arguments":{"a":5,"b":3}}}'
 ```
 
-Expected output:
+Expected output (lightweight action):
+```json
+{"status":"ok","action":"add","result":{"text":"8"}}
+```
+
+Expected output (full MCP):
 ```json
 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"8"}]}}
 ```
@@ -124,11 +137,11 @@ Expected output:
 
 ```
 1. Your server registered "_mcp-dmed._tcp" on the local network (mDNS)
-2. Any DMED client scanning the network sees your server
+2. Any DMED client scanning the network sees your endpoint
 3. Client fetches your Capability Card (GET /dmed/card)
-4. Client knows your tools: add, multiply
-5. Client establishes MCP session (POST /mcp)
-6. AI assistant can now use your calculator
+4. Client lists your actions (GET /dmed/actions)
+5. Client sends actions (POST /dmed/action) — lightweight, no session needed
+6. Or: Client establishes full MCP session (POST /mcp) for advanced use
 ```
 
 ## Next Steps

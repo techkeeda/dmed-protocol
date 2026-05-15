@@ -8,66 +8,59 @@ Scan for DMED servers, discover capabilities, and connect via MCP.
 
 ```
 1. SCAN    → Listen for beacons (BLE / mDNS / DNS)
-2. RESOLVE → Fetch Capability Card from discovered server
+2. RESOLVE → Fetch Capability Card from discovered endpoint
 3. DISPLAY → Show user what's available
-4. CONNECT → Establish MCP session
-5. USE     → Invoke tools, read resources
+4. INTERACT → Send lightweight actions (v0.2) or establish full MCP session
 ```
 
 ## Python Client (WiFi/mDNS)
 
-### Minimal Scanner
+### Minimal Scanner + Interaction (v0.2)
 
 ```python
-from dmed import DMEDScanner
-
-# Scan for 5 seconds
-servers = DMEDScanner().scan(timeout=5)
-
-for iid, card in servers.items():
-    print(f"📡 {card.name} [{card.service_type}]")
-    print(f"   Tools: {[t.name for t in card.tools]}")
-    print(f"   URL:   {card.transports[0].url}")
-```
-
-### Full Client with MCP Interaction
-
-```python
-import requests
-from dmed import DMEDScanner
+from dmed import DMEDScanner, DMEDClient
 
 # 1. Discover
 scanner = DMEDScanner()
-servers = scanner.scan(timeout=5)
+endpoints = scanner.scan(timeout=5)
 
-if not servers:
-    print("No DMED servers found"); exit()
+for iid, card in endpoints.items():
+    print(f"📡 {card.name} [{card.service_type}]")
+    print(f"   Tools: {[t.name for t in card.tools]}")
 
-# 2. Pick a server
-card = list(servers.values())[0]
-mcp_url = card.transports[0].url
-print(f"Connecting to: {card.name}")
+# 2. Connect to first endpoint
+first_id = list(endpoints.keys())[0]
+client = scanner.connect(first_id)
+card = client.connect()
 
-# 3. Initialize MCP session
-requests.post(mcp_url, json={
-    "jsonrpc": "2.0", "id": 0, "method": "initialize",
-    "params": {"protocolVersion": "2025-03-26", "capabilities": {},
-               "clientInfo": {"name": "My Client", "version": "1.0"}}
-})
+# 3. List actions
+actions = client.list_actions()
+print(f"Available: {[a['name'] for a in actions]}")
 
-# 4. List tools
-resp = requests.post(mcp_url, json={
-    "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}
-}).json()
-tools = resp["result"]["tools"]
-print(f"Available tools: {[t['name'] for t in tools]}")
+# 4. Send action (lightweight — no MCP session needed)
+result = client.send_action(actions[0]["name"], {})
+print(f"Result: {result}")
+```
 
-# 5. Call a tool
-result = requests.post(mcp_url, json={
-    "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-    "params": {"name": tools[0]["name"], "arguments": {}}
-}).json()
-print(f"Result: {result['result']['content'][0]['text']}")
+### Full MCP Client (Advanced)
+
+```python
+from dmed import DMEDScanner, DMEDClient
+
+scanner = DMEDScanner()
+endpoints = scanner.scan(timeout=5)
+
+if not endpoints:
+    print("No DMED endpoints found"); exit()
+
+# Connect
+card = list(endpoints.values())[0]
+client = DMEDClient(card.transports[0].url.rsplit("/",1)[0])
+client.connect()
+
+# Use full MCP tools/call
+result = client.call_tool("add", {"a": 5, "b": 3})
+print(f"Result: {result}")
 ```
 
 ## C Client (Embedded / Low-Level)

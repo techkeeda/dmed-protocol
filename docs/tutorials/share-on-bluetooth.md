@@ -88,7 +88,7 @@ void setup() {
     BLEService *svc = server->createService("D14D0001-1000-4000-8000-00805F9B34FB");
 
     // Card JSON (point to WiFi endpoint)
-    const char *card_json = "{\"dmed_version\":\"0.1.0\",\"instance_id\":\"...\","
+    const char *card_json = "{\"dmed_version\":\"0.2.0\",\"instance_id\":\"...\","
         "\"name\":\"My Sensor\",\"service_type\":\"iot_device\","
         "\"transports\":[{\"type\":\"http\",\"url\":\"http://192.168.1.50:8080/mcp\"}],"
         "\"auth\":{\"type\":\"none\"},\"capabilities\":{\"tools\":["

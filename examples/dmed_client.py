@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # Initialize MCP session
     requests.post(srv["mcp_url"], json={"jsonrpc":"2.0","id":0,"method":"initialize",
-        "params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"DMED CLI","version":"0.1"}}})
+        "params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"DMED CLI","version":"0.2"}}})
 
     tools = srv["card"]["capabilities"]["tools"]
     print(f"\nTools on {srv['name']}:")

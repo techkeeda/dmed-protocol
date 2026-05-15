@@ -134,7 +134,7 @@ Cache-Control: max-age=300
 ETag: "abc123"
 
 {
-  "dmed_version": "0.1.0",
+  "dmed_version": "0.2.0",
   "instance_id": "a1b2c3d4",
   "name": "Kitchen Light",
   ...

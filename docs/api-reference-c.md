@@ -233,9 +233,94 @@ Convert string to service type code. Returns `DMED_ST_UNKNOWN` for unrecognized 
 
 ---
 
+---
+
+## v0.2: Action API
+
+### Structures
+
+#### `dmed_action_request_t`
+
+```c
+typedef struct {
+    const char *action;       // Tool/action name to invoke
+    const char *params_json;  // JSON string of parameters (or NULL)
+} dmed_action_request_t;
+```
+
+#### `dmed_action_response_t`
+
+```c
+typedef struct {
+    int status;             // DMED_ACTION_OK or DMED_ACTION_ERR_*
+    const char *action;     // Echoed action name
+    char result[1024];      // Result text
+    char error[256];        // Error message if status != OK
+} dmed_action_response_t;
+```
+
+### Action Status Codes
+
+| Name | Value | Meaning |
+|------|-------|---------|
+| `DMED_ACTION_OK` | 0 | Success |
+| `DMED_ACTION_ERR_UNKNOWN` | -1 | Unknown action |
+| `DMED_ACTION_ERR_PARAMS` | -2 | Invalid parameters |
+| `DMED_ACTION_ERR_INTERNAL` | -3 | Internal endpoint error |
+
+### Functions
+
+#### `dmed_action_format_request`
+
+```c
+int dmed_action_format_request(const dmed_action_request_t *req, char *buf, size_t buf_len);
+```
+
+Format an action request as JSON for `POST /dmed/action`.
+
+**Example:**
+```c
+dmed_action_request_t req = {.action = "brew_coffee", .params_json = "{\"size\":\"large\"}"};
+char buf[256];
+int len = dmed_action_format_request(&req, buf, sizeof(buf));
+// buf = {"action":"brew_coffee","params":{"size":"large"}}
+// → POST this to http://<endpoint>/dmed/action
+```
+
+#### `dmed_action_parse_response`
+
+```c
+int dmed_action_parse_response(const char *json, size_t json_len, dmed_action_response_t *resp);
+```
+
+Parse the JSON response from a `/dmed/action` call.
+
+**Example:**
+```c
+dmed_action_response_t resp;
+dmed_action_parse_response(http_body, body_len, &resp);
+if (resp.status == DMED_ACTION_OK) {
+    printf("Result: %s\n", resp.result);
+} else {
+    printf("Error: %s\n", resp.error);
+}
+```
+
+---
+
+## Constants (Updated for v0.2)
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `DMED_VERSION_MAJOR` | 0 | Library major version |
+| `DMED_VERSION_MINOR` | 2 | Library minor version |
+| `DMED_PROTOCOL_VERSION` | 1 | Wire protocol version |
+
+---
+
 ## Memory & Performance
 
 - **Zero heap allocation** — all functions use caller-provided buffers
 - **No global state** — fully reentrant, thread-safe
-- **Code size** — ~2KB compiled (ARM Cortex-M: ~1.5KB)
-- **Stack usage** — max ~32 bytes per function call
+- **Code size** — ~2.5KB compiled (ARM Cortex-M: ~2KB)
+- **Stack usage** — max ~32 bytes per function call (beacon), ~1.3KB (action response)
