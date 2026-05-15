@@ -28,6 +28,70 @@ Imagine a world where your coffee machine, database, security camera, or any ser
 2. **DMED Client** discovers it, fetches its `dmed-manifest.json`
 3. **User** interacts with the endpoint through natural language via AI
 
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DMED Protocol Architecture (v0.2)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────┐           ┌─────────────────────────────────┐
+│        DMED CLIENT            │           │        MCP ENDPOINT              │
+│        (Discoverer)           │           │        (Broadcaster)             │
+├───────────────────────────────┤           ├─────────────────────────────────┤
+│                               │           │                                 │
+│  ┌─────────────────────────┐  │           │  ┌───────────────────────────┐  │
+│  │     DMEDScanner         │  │           │  │      DMEDServer           │  │
+│  │  • mDNS listener       │  │           │  │  • Tool registration      │  │
+│  │  • BLE scanner          │  │           │  │  • Tool handler logic     │  │
+│  │  • Endpoint registry    │  │           │  │  • State management       │  │
+│  └───────────┬─────────────┘  │           │  └──────────┬────────────────┘  │
+│              │ discover        │           │             │ broadcast         │
+│              ▼                 │           │             ▼                   │
+│  ┌─────────────────────────┐  │           │  ┌───────────────────────────┐  │
+│  │   Discovery Layer       │◄─┼── ─ ── ──┼──┤   Discovery Layer         │  │
+│  │  • _dmed._tcp (mDNS)   │  │  beacon   │  │  • mDNS broadcast        │  │
+│  │  • BLE scan             │  │           │  │  • BLE advertisement      │  │
+│  └───────────┬─────────────┘  │           │  └───────────────────────────┘  │
+│              │ found           │           │                                 │
+│              ▼                 │           │  ┌───────────────────────────┐  │
+│  ┌─────────────────────────┐  │           │  │   HTTP API Layer          │  │
+│  │     DMEDClient          │  │   HTTP    │  ├───────────────────────────┤  │
+│  │                         │  │           │  │                           │  │
+│  │  .connect() ───────────────┼──────────►┼──│  GET  /dmed/card          │  │
+│  │                         │  │           │  │       → Capability Card   │  │
+│  │  .list_actions() ─────────┼──────────►┼──│  GET  /dmed/actions       │  │
+│  │                         │  │           │  │       → Action schemas    │  │
+│  │  .send_action() ──────────┼──────────►┼──│  POST /dmed/action        │  │
+│  │    {action, params}     │  │           │  │       → {status, result}  │  │
+│  │  .call_tool() ────────────┼──────────►┼──│  POST /mcp                │  │
+│  │    (full MCP JSON-RPC)  │  │           │  │       → JSON-RPC response │  │
+│  └─────────────────────────┘  │           │  └───────────────────────────┘  │
+│                               │           │                                 │
+└───────────────────────────────┘           └─────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          TRANSPORT LAYER                                      │
+├──────────────────────┬──────────────────────┬───────────────────────────────┤
+│  WiFi / Ethernet     │    Bluetooth (BLE)   │         Internet              │
+│  mDNS/DNS-SD         │    GATT Service      │      DNS TXT + HTTPS          │
+│  _dmed._tcp          │    ~10m range        │       Global reach            │
+│  LAN only            │                      │                               │
+└──────────────────────┴──────────────────────┴───────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PROTOCOL LIFECYCLE                                     │
+│                                                                              │
+│  ┌──────────┐    ┌──────────┐    ┌──────────────┐    ┌──────────────┐      │
+│  │ DISCOVER │───►│ CONNECT  │───►│   INTERACT   │───►│  DISCONNECT  │      │
+│  │          │    │          │    │              │    │              │      │
+│  │ Scan for │    │ Fetch    │    │ Send actions │    │ Stop sending │      │
+│  │ beacons  │    │ card     │    │ or full MCP  │    │ (stateless)  │      │
+│  └──────────┘    └──────────┘    └──────────────┘    └──────────────┘      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Quick Start
 
 ### Make something discoverable
