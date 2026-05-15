@@ -1,0 +1,57 @@
+{
+  "dmed_version": "1.0",
+  "endpoint": {
+    "id": "smart-coffee-machine-001",
+    "name": "Smart Coffee Machine",
+    "description": "Control your coffee machine — brew drinks, check status, set temperature",
+    "icon": "☕",
+    "category": "iot"
+  },
+  "capabilities": {
+    "tools": [
+      {
+        "name": "brew_coffee",
+        "description": "Brew a coffee with specified type and size",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "drink_type": { "type": "string", "enum": ["espresso", "americano", "latte", "cappuccino"] },
+            "size": { "type": "string", "enum": ["small", "medium", "large"] }
+          },
+          "required": ["drink_type", "size"]
+        }
+      },
+      {
+        "name": "get_status",
+        "description": "Get current machine status including water level, temperature, and bean level",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "set_temperature",
+        "description": "Set the brewing temperature in Celsius",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "temperature": { "type": "number", "minimum": 85, "maximum": 96 }
+          },
+          "required": ["temperature"]
+        }
+      }
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "transport": {
+    "supported": ["mdns", "bluetooth"],
+    "mdns": {
+      "service_type": "_dmed._tcp",
+      "port": 3100
+    },
+    "bluetooth": {
+      "service_uuid": "0000ED01-0000-1000-8000-00805F9B34FB"
+    }
+  },
+  "auth": {
+    "type": "none"
+  }
+}

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dmed-protocol"
+version = "0.1.0"
+description = "DMED — Dynamic MCP Discovery Protocol library"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+server = ["zeroconf>=0.80", "flask>=2.0"]
+client = ["zeroconf>=0.80", "requests>=2.28"]
+all = ["zeroconf>=0.80", "flask>=2.0", "requests>=2.28"]
