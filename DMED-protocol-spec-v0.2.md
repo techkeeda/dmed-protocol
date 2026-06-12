@@ -53,7 +53,7 @@ DMED covers:
 ### Phase 1: Discovery (Beacon)
 
 MCP endpoints broadcast their presence:
-- **mDNS:** Publish `_dmed._tcp` or `_mcp-dmed._tcp` service with TXT records
+- **mDNS:** Publish `_dmed._tcp` or `_dmed._tcp` service with TXT records
 - **BLE:** Advertise beacon with service type and instance ID
 
 ### Phase 2: Connect (Card)

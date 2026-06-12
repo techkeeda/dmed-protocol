@@ -115,7 +115,7 @@ class DMEDServer:
                       service_type=getattr(ServiceType,self.card.service_type.upper(),0),
                       instance_id=int(self.card.instance_id,16))
         zc=Zeroconf()
-        zc.register_service(ServiceInfo("_mcp-dmed._tcp.local.",f"{self.card.name}._mcp-dmed._tcp.local.",
+        zc.register_service(ServiceInfo("_dmed._tcp.local.",f"{self.card.name}._dmed._tcp.local.",
             addresses=[socket.inet_aton(ip)],port=self.port,
             properties=beacon.to_mdns_txt(self.card.name),server=f"{self.card.instance_id}.local."))
         app=Flask(__name__)
@@ -218,7 +218,7 @@ class DMEDScanner:
                 except:pass
             def remove_service(self,*a):pass
             def update_service(self,*a):pass
-        zc=Zeroconf();ServiceBrowser(zc,"_mcp-dmed._tcp.local.",L())
+        zc=Zeroconf();ServiceBrowser(zc,"_dmed._tcp.local.",L())
         time.sleep(timeout);zc.close()
         return self.endpoints
 

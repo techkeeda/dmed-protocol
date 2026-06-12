@@ -12,23 +12,18 @@ A Philips Hue-style smart light bulb running on an ESP32.
 
 **Beacon (BLE advertisement payload, hex):**
 ```
-10 01 A1B2C3D4 EC 7F3A
+14 01 A1B2C3D4 EC 7F3A
 │  │  │         │  └── name_hash: CRC-16 of "Kitchen Light" = 0x7F3A
 │  │  │         └── tx_power: -20 dBm (0xEC signed)
 │  │  └── instance_id: 0xA1B2C3D4
 │  └── service_type: 0x01 (iot_device)
-└── version=1, flags=0x0 (no auth, no TLS, single tool=false, not cloud-backed)
-```
-
-Wait — flags should be 0x4 (MULTI=1, multiple tools). Corrected:
-```
-14 01 A1B2C3D4 EC 7F3A
+└── version=1, flags=0x4 (MULTI — multiple tools)
 ```
 
 **mDNS advertisement (simultaneous):**
 ```
-Kitchen Light._mcp-dmed._tcp.local. 120 IN SRV 0 0 8080 kitchen-light.local.
-Kitchen Light._mcp-dmed._tcp.local. 4500 IN TXT "v=1" "id=a1b2c3d4" "st=01" "fl=4" "nm=Kitchen Light" "path=/mcp" "card=/dmed/card"
+Kitchen Light._dmed._tcp.local. 120 IN SRV 0 0 8080 kitchen-light.local.
+Kitchen Light._dmed._tcp.local. 4500 IN TXT "v=1" "id=a1b2c3d4" "st=01" "fl=4" "nm=Kitchen Light" "path=/mcp" "card=/dmed/card"
 kitchen-light.local. 120 IN A 192.168.1.42
 ```
 
@@ -189,8 +184,8 @@ A Raspberry Pi running behind the counter at a coffee shop.
 
 **mDNS advertisement:**
 ```
-Joes Coffee._mcp-dmed._tcp.local. 120 IN SRV 0 0 9000 joes-kiosk.local.
-Joes Coffee._mcp-dmed._tcp.local. 4500 IN TXT "v=1" "id=cafe0001" "st=05" "fl=4" "nm=Joe's Coffee" "path=/mcp" "card=/dmed/card"
+Joes Coffee._dmed._tcp.local. 120 IN SRV 0 0 9000 joes-kiosk.local.
+Joes Coffee._dmed._tcp.local. 4500 IN TXT "v=1" "id=cafe0001" "st=05" "fl=4" "nm=Joe's Coffee" "path=/mcp" "card=/dmed/card"
 joes-kiosk.local. 120 IN A 10.0.0.5
 ```
 
@@ -363,8 +358,8 @@ _dmed.api.smartllm.example.com. 3600 IN TXT "v=1;id=llm00001;st=08;fl=3;url=http
 ### mDNS Advertisement
 
 ```
-CNC-7-Telemetry._mcp-dmed._tcp.local. 120 IN SRV 0 0 8443 cnc7.factory.local.
-CNC-7-Telemetry._mcp-dmed._tcp.local. 4500 IN TXT "v=1" "id=cnc70001" "st=0d" "fl=3" "nm=CNC Machine 7" "path=/mcp" "card=/dmed/card"
+CNC-7-Telemetry._dmed._tcp.local. 120 IN SRV 0 0 8443 cnc7.factory.local.
+CNC-7-Telemetry._dmed._tcp.local. 4500 IN TXT "v=1" "id=cnc70001" "st=0d" "fl=3" "nm=CNC Machine 7" "path=/mcp" "card=/dmed/card"
 cnc7.factory.local. 120 IN A 172.16.0.107
 ```
 
@@ -453,7 +448,7 @@ cnc7.factory.local. 120 IN A 172.16.0.107
 |-------|-------------------|
 | version=1, flags=0, st=0x01, id=0xA1B2C3D4 | `10 01 A1B2C3D4` |
 | version=1, flags=0xF, st=0x08, id=0x00000001 | `1F 08 00000001` |
-| version=1, flags=0x3, st=0x0D, id=0xCNC70001, tx=-10 | `13 0D CNC70001 F6` |
+| version=1, flags=0x3, st=0x0D, id=0xC0C70001, tx=-10 | `13 0D C0C70001 F6` |
 | version=1, flags=0x4, st=0x01, id=0xA1B2C3D4, tx=-20, nh=0x7F3A | `14 01 A1B2C3D4 EC 7F3A` |
 
 ### Instance ID Generation

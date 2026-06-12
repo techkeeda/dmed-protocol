@@ -36,8 +36,8 @@ Scans the network, lists found MCP endpoints, and lets you select one to view it
 ## How It Works
 
 1. Listens for mDNS broadcasts on service type `_dmed._tcp`
-2. Reads TXT records for endpoint metadata (name, description, category, manifest URL)
-3. Optionally fetches the full `dmed-manifest.json` to list available tools
+2. Reads TXT records for endpoint metadata (name, service type, card URL)
+3. Optionally fetches the full capability card to list available tools
 
 ## Testing Locally
 

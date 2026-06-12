@@ -104,7 +104,7 @@ From another terminal:
 
 ```bash
 # Discover (if using Python server with mDNS)
-avahi-browse -r _mcp-dmed._tcp
+avahi-browse -r _dmed._tcp
 
 # Or directly fetch the card
 curl http://localhost:8080/dmed/card | jq .
@@ -136,7 +136,7 @@ Expected output (full MCP):
 ## What Just Happened?
 
 ```
-1. Your server registered "_mcp-dmed._tcp" on the local network (mDNS)
+1. Your server registered "_dmed._tcp" on the local network (mDNS)
 2. Any DMED client scanning the network sees your endpoint
 3. Client fetches your Capability Card (GET /dmed/card)
 4. Client lists your actions (GET /dmed/actions)

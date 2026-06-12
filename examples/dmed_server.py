@@ -58,7 +58,7 @@ def mcp():
 if __name__ == "__main__":
     ip = get_local_ip()
     zc = Zeroconf()
-    zc.register_service(ServiceInfo("_mcp-dmed._tcp.local.", f"{SERVER_NAME}._mcp-dmed._tcp.local.",
+    zc.register_service(ServiceInfo("_dmed._tcp.local.", f"{SERVER_NAME}._dmed._tcp.local.",
         addresses=[socket.inet_aton(ip)], port=PORT,
         properties={"v":"1","id":INSTANCE_ID,"st":"0a","fl":"4","nm":SERVER_NAME,"path":"/mcp","card":"/dmed/card"},
         server=f"{INSTANCE_ID}.local."))

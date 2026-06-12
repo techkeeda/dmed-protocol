@@ -165,8 +165,8 @@ def get_local_ip():
 def register_mdns():
     ip = get_local_ip()
     info = ServiceInfo(
-        type_="_mcp-dmed._tcp.local.",
-        name=f"{SERVER_NAME}._mcp-dmed._tcp.local.",
+        type_="_dmed._tcp.local.",
+        name=f"{SERVER_NAME}._dmed._tcp.local.",
         addresses=[socket.inet_aton(ip)],
         port=PORT,
         properties={
@@ -309,7 +309,7 @@ if __name__ == "__main__":
 
     scanner = DMEDScanner()
     zc = Zeroconf()
-    browser = ServiceBrowser(zc, "_mcp-dmed._tcp.local.", scanner)
+    browser = ServiceBrowser(zc, "_dmed._tcp.local.", scanner)
 
     try:
         while True:
@@ -436,14 +436,14 @@ void setupBLE() {
 
 void setupMDNS() {
     MDNS.begin("kitchen-light");
-    MDNS.addService("_mcp-dmed", "_tcp", HTTP_PORT);
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "v", "1");
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "id", "a1b2c3d4");
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "st", "01");
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "fl", "4");
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "nm", SERVER_NAME);
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "path", "/mcp");
-    MDNS.addServiceTxt("_mcp-dmed", "_tcp", "card", "/dmed/card");
+    MDNS.addService("_dmed", "_tcp", HTTP_PORT);
+    MDNS.addServiceTxt("_dmed", "_tcp", "v", "1");
+    MDNS.addServiceTxt("_dmed", "_tcp", "id", "a1b2c3d4");
+    MDNS.addServiceTxt("_dmed", "_tcp", "st", "01");
+    MDNS.addServiceTxt("_dmed", "_tcp", "fl", "4");
+    MDNS.addServiceTxt("_dmed", "_tcp", "nm", SERVER_NAME);
+    MDNS.addServiceTxt("_dmed", "_tcp", "path", "/mcp");
+    MDNS.addServiceTxt("_dmed", "_tcp", "card", "/dmed/card");
 }
 
 void setupHTTP() {
@@ -536,9 +536,9 @@ void loop() {
 
 ```bash
 # 1. Verify mDNS advertisement is visible
-dns-sd -B _mcp-dmed._tcp local.
+dns-sd -B _dmed._tcp local.
 # or on Linux:
-avahi-browse -r _mcp-dmed._tcp
+avahi-browse -r _dmed._tcp
 
 # 2. Verify capability card
 curl http://<server-ip>:<port>/dmed/card | python3 -m json.tool

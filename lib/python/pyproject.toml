@@ -7,7 +7,7 @@ name = "dmed-protocol"
 version = "0.2.0"
 description = "DMED — Dynamic MCP Endpoint Discovery Protocol library"
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT"
 requires-python = ">=3.8"
 dependencies = []
 

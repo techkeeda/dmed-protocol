@@ -55,14 +55,15 @@ function showMenu() {
 
     const txt = service.txt || {};
     console.log(`\n🔗 Connecting to MCP endpoint: ${txt.name || service.name}`);
-    console.log(`   Fetching manifest from: ${txt.manifest_url}`);
+    console.log(`   Fetching card from: http://${service.host}:${service.port}${txt.card || "/dmed/card"}`);
 
     try {
-      const res = await fetch(txt.manifest_url);
-      const manifest = await res.json();
+      const cardUrl = `http://${service.host}:${service.port}${txt.card || "/dmed/card"}`;
+      const res = await fetch(cardUrl);
+      const card = await res.json();
 
       console.log(`\n📋 Available tools:`);
-      for (const tool of manifest.capabilities.tools) {
+      for (const tool of card.capabilities.tools) {
         console.log(`   • ${tool.name} — ${tool.description}`);
       }
 

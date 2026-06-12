@@ -6,7 +6,8 @@ import { readFileSync } from "fs";
 import { networkInterfaces } from "os";
 import { z } from "zod";
 
-const manifest = JSON.parse(readFileSync("./dmed-manifest.json", "utf-8"));
+const card = JSON.parse(readFileSync("./dmed-manifest.json", "utf-8"));
+const PORT = 3100;
 
 // --- Simulated machine state ---
 let machineState = {
@@ -19,7 +20,7 @@ let machineState = {
 
 // --- MCP Endpoint ---
 const server = new McpServer({
-  name: manifest.endpoint.name,
+  name: card.name,
   version: "1.0.0",
 });
 
@@ -37,37 +38,24 @@ server.tool(
     if (machineState.bean_level < 5) {
       return { content: [{ type: "text", text: "Error: Bean level too low. Please refill." }] };
     }
-
     machineState.is_brewing = true;
     machineState.water_level -= size === "large" ? 20 : size === "medium" ? 15 : 10;
     machineState.bean_level -= size === "large" ? 15 : size === "medium" ? 10 : 7;
     machineState.last_drink = `${size} ${drink_type}`;
     machineState.is_brewing = false;
-
-    return {
-      content: [{ type: "text", text: `☕ Brewing complete! Your ${size} ${drink_type} is ready.` }],
-    };
+    return { content: [{ type: "text", text: `☕ Brewing complete! Your ${size} ${drink_type} is ready.` }] };
   }
 );
 
 server.tool("get_status", "Get current machine status", {}, async () => {
   return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            water_level: `${machineState.water_level}%`,
-            bean_level: `${machineState.bean_level}%`,
-            temperature: `${machineState.temperature}°C`,
-            is_brewing: machineState.is_brewing,
-            last_drink: machineState.last_drink || "None",
-          },
-          null,
-          2
-        ),
-      },
-    ],
+    content: [{ type: "text", text: JSON.stringify({
+      water_level: `${machineState.water_level}%`,
+      bean_level: `${machineState.bean_level}%`,
+      temperature: `${machineState.temperature}°C`,
+      is_brewing: machineState.is_brewing,
+      last_drink: machineState.last_drink || "None",
+    }, null, 2) }],
   };
 });
 
@@ -77,13 +65,11 @@ server.tool(
   { temperature: z.number().min(85).max(96) },
   async ({ temperature }) => {
     machineState.temperature = temperature;
-    return {
-      content: [{ type: "text", text: `Temperature set to ${temperature}°C` }],
-    };
+    return { content: [{ type: "text", text: `Temperature set to ${temperature}°C` }] };
   }
 );
 
-// --- DMED Discovery: mDNS Broadcasting ---
+// --- DMED Discovery ---
 function getLocalIP() {
   const interfaces = networkInterfaces();
   for (const iface of Object.values(interfaces)) {
@@ -95,31 +81,71 @@ function getLocalIP() {
 }
 
 const localIP = getLocalIP();
-const port = manifest.transport.mdns.port;
 
-// Serve manifest over HTTP so discoverers can fetch full details
+// Update card transport URL with actual IP
+card.transports[0].url = `http://${localIP}:${PORT}/mcp`;
+
+// Serve capability card over HTTP
 const app = express();
-app.get("/dmed-manifest.json", (req, res) => res.json(manifest));
-app.listen(port, () => {
-  console.error(`[DMED] Manifest served at http://${localIP}:${port}/dmed-manifest.json`);
+app.get("/dmed/card", (req, res) => res.json(card));
+
+// v0.2: Action endpoints
+app.get("/dmed/actions", (req, res) => {
+  res.json({ actions: card.capabilities.tools.map(t => ({
+    name: t.name, description: t.description, params: t.inputSchema
+  }))});
 });
 
-// Broadcast via mDNS
+app.post("/dmed/action", express.json(), async (req, res) => {
+  const { action, params } = req.body;
+  if (!action) return res.status(400).json({ status: "error", message: "Missing 'action' field" });
+  const tool = card.capabilities.tools.find(t => t.name === action);
+  if (!tool) return res.status(404).json({ status: "error", message: `Unknown action: ${action}` });
+  // Delegate to MCP tool handler (simplified for demo)
+  try {
+    let result;
+    if (action === "brew_coffee") {
+      const { drink_type, size } = params || {};
+      machineState.water_level -= size === "large" ? 20 : size === "medium" ? 15 : 10;
+      machineState.bean_level -= size === "large" ? 15 : size === "medium" ? 10 : 7;
+      machineState.last_drink = `${size} ${drink_type}`;
+      result = `☕ Your ${size} ${drink_type} is ready!`;
+    } else if (action === "get_status") {
+      result = JSON.stringify(machineState);
+    } else if (action === "set_temperature") {
+      machineState.temperature = params?.temperature || 92;
+      result = `Temperature set to ${machineState.temperature}°C`;
+    }
+    res.json({ status: "ok", action, result: { text: result } });
+  } catch (e) {
+    res.status(500).json({ status: "error", action, message: e.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.error(`[DMED] Card:    http://${localIP}:${PORT}/dmed/card`);
+  console.error(`[DMED] Actions: http://${localIP}:${PORT}/dmed/actions`);
+  console.error(`[DMED] Invoke:  POST http://${localIP}:${PORT}/dmed/action`);
+});
+
+// Broadcast via mDNS (_dmed._tcp)
 const bonjour = new Bonjour();
 bonjour.publish({
-  name: manifest.endpoint.name,
+  name: card.name,
   type: "dmed",
-  port,
+  port: PORT,
   txt: {
-    dmed_version: manifest.dmed_version,
-    name: manifest.endpoint.name,
-    description: manifest.endpoint.description,
-    category: manifest.endpoint.category,
-    manifest_url: `http://${localIP}:${port}/dmed-manifest.json`,
+    v: "1",
+    id: card.instance_id,
+    st: "01",
+    fl: "4",
+    nm: card.name,
+    card: "/dmed/card",
+    path: "/mcp",
   },
 });
 
-console.error(`[DMED] Broadcasting MCP endpoint "${manifest.endpoint.name}" on _dmed._tcp port ${port}`);
+console.error(`[DMED] ✓ Broadcasting "${card.name}" on _dmed._tcp port ${PORT}`);
 
 // --- Start MCP transport ---
 const transport = new StdioServerTransport();

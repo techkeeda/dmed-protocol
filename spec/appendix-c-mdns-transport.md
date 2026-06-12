@@ -5,7 +5,7 @@
 DMED servers on local networks MUST register the following DNS-SD service type:
 
 ```
-_mcp-dmed._tcp
+_dmed._tcp
 ```
 
 This service type indicates an MCP server discoverable via the DMED protocol.
@@ -15,7 +15,7 @@ This service type indicates an MCP server discoverable via the DMED protocol.
 ### SRV Record
 
 ```
-<instance_name>._mcp-dmed._tcp.local. 120 IN SRV 0 0 <port> <hostname>.local.
+<instance_name>._dmed._tcp.local. 120 IN SRV 0 0 <port> <hostname>.local.
 ```
 
 - `<instance_name>`: Human-readable name (RFC 6763 compliant, max 63 bytes UTF-8)
@@ -25,7 +25,7 @@ This service type indicates an MCP server discoverable via the DMED protocol.
 ### TXT Record
 
 ```
-<instance_name>._mcp-dmed._tcp.local. 4500 IN TXT
+<instance_name>._dmed._tcp.local. 4500 IN TXT
   "v=1"
   "id=a1b2c3d4"
   "st=01"
@@ -53,7 +53,7 @@ This service type indicates an MCP server discoverable via the DMED protocol.
 Clients discover DMED servers by browsing for the service type:
 
 ```
-1. Send mDNS query: _mcp-dmed._tcp.local. PTR ?
+1. Send mDNS query: _dmed._tcp.local. PTR ?
 2. Receive PTR responses listing instance names
 3. For each instance, resolve SRV + TXT records
 4. Extract host, port, and TXT key-value pairs
@@ -89,7 +89,7 @@ class DMEDListener:
         }
 
 zc = zeroconf.Zeroconf()
-browser = zeroconf.ServiceBrowser(zc, "_mcp-dmed._tcp.local.", DMEDListener())
+browser = zeroconf.ServiceBrowser(zc, "_dmed._tcp.local.", DMEDListener())
 ```
 
 ## C.4 Registration Procedure (Server)
@@ -100,8 +100,8 @@ Servers advertise by registering the service:
 import zeroconf
 
 info = zeroconf.ServiceInfo(
-    type_="_mcp-dmed._tcp.local.",
-    name="Kitchen Light._mcp-dmed._tcp.local.",
+    type_="_dmed._tcp.local.",
+    name="Kitchen Light._dmed._tcp.local.",
     addresses=[socket.inet_aton("192.168.1.42")],
     port=8080,
     properties={
@@ -165,8 +165,8 @@ Standard MCP Streamable HTTP endpoint per MCP specification.
 When a server shuts down gracefully, it MUST send mDNS goodbye packets (records with TTL=0) to notify clients:
 
 ```
-Kitchen Light._mcp-dmed._tcp.local. 0 IN SRV ...
-Kitchen Light._mcp-dmed._tcp.local. 0 IN TXT ...
+Kitchen Light._dmed._tcp.local. 0 IN SRV ...
+Kitchen Light._dmed._tcp.local. 0 IN TXT ...
 ```
 
 This causes clients to immediately remove the server from their discovered list.

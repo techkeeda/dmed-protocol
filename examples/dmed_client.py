@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print("[DMED] Scanning for servers... (Ctrl+C to stop)\n")
     scanner = DMEDScanner()
     zc = Zeroconf()
-    ServiceBrowser(zc, "_mcp-dmed._tcp.local.", scanner)
+    ServiceBrowser(zc, "_dmed._tcp.local.", scanner)
     try:
         while True: time.sleep(1)
     except KeyboardInterrupt: pass

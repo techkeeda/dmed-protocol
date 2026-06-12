@@ -172,8 +172,7 @@ npm install && npm run scan
 ```
 ├── DMED_PROMPT.md                          # AI prompt library — feed to any AI tool
 ├── DMED-protocol-spec-v0.2.md              # Protocol specification v0.2 (current)
-├── DMED-protocol-spec-v0.1.md              # Protocol specification v0.1 (archived)
-├── DMED-prior-art-research.md              # Prior art & research
+├── docs/DMED-prior-art-research.md         # Prior art & research
 ├── spec/
 │   ├── DMED-spec-v0.1.md                   # Core spec
 │   ├── appendix-a-json-schema.md           # JSON schema definitions

@@ -13,12 +13,12 @@ const browser = bonjour.find({ type: "dmed" }, (service) => {
   if (discovered.has(id)) return;
   discovered.set(id, service);
 
-  console.log(`\n✅ Found MCP endpoint: ${txt.name || service.name}`);
+  console.log(`\n✅ Found MCP endpoint: ${txt.nm || txt.name || service.name}`);
   console.log(`   📝 ${txt.description || "No description"}`);
-  console.log(`   📂 Category: ${txt.category || "unknown"}`);
+  console.log(`   📂 Service Type: ${txt.st || "unknown"}`);
   console.log(`   🌐 Host: ${service.host}:${service.port}`);
-  console.log(`   📄 Manifest: ${txt.manifest_url || "N/A"}`);
-  console.log(`   🔖 DMED Version: ${txt.dmed_version || "unknown"}`);
+  console.log(`   📄 Card: http://${service.host}:${service.port}${txt.card || "/dmed/card"}`);
+  console.log(`   🔖 DMED Version: ${txt.v || "unknown"}`);
   console.log("━".repeat(60));
 });
 

@@ -1,11 +1,18 @@
 {
   "dmed_version": "0.2.0",
-  "endpoint": {
-    "id": "smart-coffee-machine-001",
-    "name": "Smart Coffee Machine",
-    "description": "Control your coffee machine — brew drinks, check status, set temperature",
-    "icon": "☕",
-    "category": "iot"
+  "instance_id": "c0ffee01",
+  "name": "Smart Coffee Machine",
+  "description": "Control your coffee machine — brew drinks, check status, set temperature",
+  "service_type": "iot_device",
+  "transports": [
+    {
+      "type": "http",
+      "url": "http://localhost:3100/mcp",
+      "priority": 1
+    }
+  ],
+  "auth": {
+    "type": "none"
   },
   "capabilities": {
     "tools": [
@@ -41,17 +48,9 @@
     "resources": [],
     "prompts": []
   },
-  "transport": {
-    "supported": ["mdns", "bluetooth"],
-    "mdns": {
-      "service_type": "_dmed._tcp",
-      "port": 3100
-    },
-    "bluetooth": {
-      "service_uuid": "0000ED01-0000-1000-8000-00805F9B34FB"
-    }
+  "metadata": {
+    "icon": "☕",
+    "category": "iot"
   },
-  "auth": {
-    "type": "none"
-  }
+  "tags": ["coffee", "iot", "kitchen", "smart-home"]
 }

@@ -90,10 +90,10 @@ From another machine on the same network:
 
 ```bash
 # Linux
-avahi-browse -r _mcp-dmed._tcp
+avahi-browse -r _dmed._tcp
 
 # macOS
-dns-sd -B _mcp-dmed._tcp local.
+dns-sd -B _dmed._tcp local.
 
 # Or use the DMED Python scanner
 python3 -c "from dmed import DMEDScanner; print(DMEDScanner().scan())"

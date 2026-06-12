@@ -30,20 +30,24 @@ Discover → Connect → Interact → Disconnect
 3. **Interact** — Client sends actions via `POST /dmed/action` (lightweight) or `POST /mcp` (full MCP)
 4. **Disconnect** — Client stops sending requests (stateless, no handshake needed)
 
-### DMED Manifest (dmed-manifest.json)
+### DMED Capability Card (served at `/dmed/card`)
 
-Every DMED-enabled MCP endpoint must have a manifest:
+Every DMED-enabled MCP endpoint must serve a capability card:
 
 ```json
 {
   "dmed_version": "0.2.0",
-  "endpoint": {
-    "id": "<unique-endpoint-id>",
-    "name": "<human-readable-name>",
-    "description": "<what-this-endpoint-does>",
-    "icon": "<optional-icon-url-or-emoji>",
-    "category": "<category: iot | api | database | media | utility | commerce | custom>"
-  },
+  "instance_id": "<8-char-hex-id>",
+  "name": "<human-readable-name>",
+  "description": "<what-this-endpoint-does>",
+  "service_type": "<category: iot_device | ai_service | data_source | media | tool_utility | retail_kiosk | information | custom>",
+  "transports": [
+    {
+      "type": "http",
+      "url": "http://<host>:<port>/mcp",
+      "priority": 1
+    }
+  ],
   "capabilities": {
     "tools": [
       {
@@ -55,20 +59,11 @@ Every DMED-enabled MCP endpoint must have a manifest:
     "resources": [],
     "prompts": []
   },
-  "transport": {
-    "supported": ["mdns", "bluetooth", "manual"],
-    "mdns": {
-      "service_type": "_dmed._tcp",
-      "port": 3000
-    },
-    "bluetooth": {
-      "service_uuid": "<generated-uuid>"
-    }
-  },
   "auth": {
-    "type": "none | token | oauth2",
-    "details": {}
-  }
+    "type": "none | pin | api_key | oauth2"
+  },
+  "tags": ["<keyword1>", "<keyword2>"],
+  "metadata": {}
 }
 ```
 
@@ -121,7 +116,7 @@ Broadcast using service type `_dmed._tcp` with TXT records:
 | `name`         | Endpoint display name           |
 | `description`  | Short description               |
 | `category`     | Endpoint category               |
-| `manifest_url` | URL to full dmed-manifest.json  |
+| `card`         | URL path to capability card     |
 
 #### Bluetooth (BLE)
 
@@ -170,7 +165,7 @@ const manifest = JSON.parse(readFileSync("./dmed-manifest.json", "utf-8"));
 
 // --- MCP Endpoint Setup ---
 const server = new McpServer({
-  name: manifest.endpoint.name,
+  name: card.name,
   version: "1.0.0",
 });
 
@@ -193,7 +188,7 @@ function getLocalIP() {
 }
 
 const localIP = getLocalIP();
-const port = manifest.transport.mdns.port;
+const port = PORT;
 const app = express();
 app.use(express.json());
 
@@ -230,19 +225,19 @@ app.listen(port, () => {
 // --- DMED Discovery Broadcasting ---
 const bonjour = new Bonjour();
 bonjour.publish({
-  name: manifest.endpoint.name,
+  name: card.name,
   type: "dmed",
   port,
   txt: {
     dmed_version: manifest.dmed_version,
-    name: manifest.endpoint.name,
-    description: manifest.endpoint.description,
-    category: manifest.endpoint.category,
-    manifest_url: `http://${localIP}:${port}/dmed/card`,
+    name: card.name,
+    description: card.description,
+    category: card.service_type,
+    card: `/dmed/card`,
   },
 });
 
-console.error(`[DMED] Broadcasting MCP endpoint: ${manifest.endpoint.name}`);
+console.error(`[DMED] Broadcasting MCP endpoint: ${card.name}`);
 
 // --- Start MCP transport ---
 const transport = new StdioServerTransport();

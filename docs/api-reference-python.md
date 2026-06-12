@@ -230,7 +230,7 @@ DMEDServer(card, port=9000, tool_handler=handle).start()
 ```
 
 The server automatically:
-- Registers `_mcp-dmed._tcp` on the local network via mDNS
+- Registers `_dmed._tcp` on the local network via mDNS
 - Serves the capability card at `GET /dmed/card`
 - Handles MCP protocol at `POST /mcp` (initialize, tools/list, tools/call)
 
