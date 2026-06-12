@@ -1,7 +1,7 @@
 # DMED — Dynamic MCP Endpoint Discovery Protocol
 
 ![Version](https://img.shields.io/badge/protocol-v0.2%20draft-orange)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Status](https://img.shields.io/badge/status-early%20stage-yellow)
 
 **Make anything discoverable. Talk to anything.**
@@ -362,7 +362,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[MIT](./LICENSE)
+[Apache 2.0](./LICENSE)
 
 ---
 

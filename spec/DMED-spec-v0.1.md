@@ -5,7 +5,7 @@
 **Document Version:** 0.1.0
 **Date:** 2026-05-15
 **Status:** Draft Specification
-**License:** MIT
+**License:** Apache 2.0
 **Authors:** Nilesh
 
 ---
