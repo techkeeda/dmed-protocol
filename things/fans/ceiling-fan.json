@@ -1,0 +1,22 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "fn000001",
+  "name": "Hall Ceiling Fan",
+  "description": "5-speed ceiling fan with timer and reverse",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.20:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn fan on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_speed", "description": "Set fan speed", "inputSchema": {"type": "object", "properties": {"speed": {"type": "integer", "minimum": 0, "maximum": 5, "description": "0=off, 1=lowest, 5=highest"}}, "required": ["speed"]}},
+      {"name": "set_timer", "description": "Auto-off after N minutes", "inputSchema": {"type": "object", "properties": {"minutes": {"type": "integer", "minimum": 1, "maximum": 480}}, "required": ["minutes"]}},
+      {"name": "set_direction", "description": "Set rotation direction", "inputSchema": {"type": "object", "properties": {"direction": {"type": "string", "enum": ["forward", "reverse"]}}, "required": ["direction"]}},
+      {"name": "get_status", "description": "Get current speed, direction, timer remaining", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "hall", "floor": "3", "zone": "Flat-B304", "model": "CF-5S-52"},
+  "tags": ["fan", "ceiling-fan", "smart-home", "timer"]
+}

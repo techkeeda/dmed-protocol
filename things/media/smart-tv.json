@@ -1,0 +1,23 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "md000001",
+  "name": "Living Room TV",
+  "description": "Smart TV with power, volume, input, and app control",
+  "service_type": "media",
+  "transports": [{"type": "http", "url": "http://192.168.1.60:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn TV on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_volume", "description": "Set volume 0-100", "inputSchema": {"type": "object", "properties": {"level": {"type": "integer", "minimum": 0, "maximum": 100}}, "required": ["level"]}},
+      {"name": "mute", "description": "Toggle mute", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_input", "description": "Switch input source", "inputSchema": {"type": "object", "properties": {"source": {"type": "string", "enum": ["hdmi1", "hdmi2", "hdmi3", "usb", "bluetooth", "airplay"]}}, "required": ["source"]}},
+      {"name": "launch_app", "description": "Launch a streaming app", "inputSchema": {"type": "object", "properties": {"app": {"type": "string", "enum": ["netflix", "youtube", "prime_video", "disney_plus", "spotify"]}}, "required": ["app"]}},
+      {"name": "get_status", "description": "Get power state, current input, volume, active app", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "hall", "floor": "3", "zone": "Flat-B304", "model": "SmartTV-55-4K", "screen_size_inches": 55},
+  "tags": ["tv", "media", "entertainment", "smart-home"]
+}

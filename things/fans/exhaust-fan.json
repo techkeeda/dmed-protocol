@@ -1,0 +1,21 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "fn000002",
+  "name": "Kitchen Exhaust Fan",
+  "description": "Exhaust fan with auto-humidity sensor",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.21:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn exhaust on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_speed", "description": "Set speed (low/medium/high)", "inputSchema": {"type": "object", "properties": {"speed": {"type": "string", "enum": ["low", "medium", "high"]}}, "required": ["speed"]}},
+      {"name": "set_auto_mode", "description": "Enable/disable auto mode (turns on when humidity > threshold)", "inputSchema": {"type": "object", "properties": {"enabled": {"type": "boolean"}, "humidity_threshold": {"type": "integer", "minimum": 40, "maximum": 90}}, "required": ["enabled"]}},
+      {"name": "get_status", "description": "Get fan state and current humidity reading", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "kitchen", "floor": "3", "zone": "Flat-B304", "model": "EXH-150"},
+  "tags": ["fan", "exhaust", "humidity", "smart-home"]
+}

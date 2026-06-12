@@ -1,0 +1,22 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "ht000001",
+  "name": "Air Purifier",
+  "description": "HEPA air purifier with AQI monitoring and auto mode",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.80:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn purifier on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_mode", "description": "Set operating mode", "inputSchema": {"type": "object", "properties": {"mode": {"type": "string", "enum": ["auto", "sleep", "low", "medium", "high", "turbo"]}}, "required": ["mode"]}},
+      {"name": "get_air_quality", "description": "Get current AQI, PM2.5, PM10 readings", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_filter_life", "description": "Get remaining filter life percentage", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_status", "description": "Get power state, mode, fan speed, AQI", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "room1", "floor": "3", "zone": "Flat-B304", "model": "AirPure-H13", "coverage_sqft": 500},
+  "tags": ["air-purifier", "health", "air-quality", "hepa", "smart-home"]
+}

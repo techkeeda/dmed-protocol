@@ -1,0 +1,23 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "md000002",
+  "name": "Multi-room Speaker",
+  "description": "WiFi speaker with multi-room audio, volume, and playback control",
+  "service_type": "media",
+  "transports": [{"type": "http", "url": "http://192.168.1.61:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "play", "description": "Resume playback", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "pause", "description": "Pause playback", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "next_track", "description": "Skip to next track", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_volume", "description": "Set volume 0-100", "inputSchema": {"type": "object", "properties": {"level": {"type": "integer", "minimum": 0, "maximum": 100}}, "required": ["level"]}},
+      {"name": "play_url", "description": "Play audio from URL", "inputSchema": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string"}}, "required": ["url"]}},
+      {"name": "get_status", "description": "Get playing state, current track, volume", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "hall", "floor": "3", "zone": "Flat-B304", "model": "WiFi-Speaker-360"},
+  "tags": ["speaker", "audio", "music", "multi-room", "smart-home"]
+}

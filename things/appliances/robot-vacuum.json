@@ -1,0 +1,25 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "vc000001",
+  "name": "Robot Vacuum",
+  "description": "Autonomous robot vacuum with scheduling, room selection, and mop mode",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.30:8080/mcp", "priority": 1}],
+  "auth": {"type": "pin", "pin_mechanism": "companion_app"},
+  "capabilities": {
+    "tools": [
+      {"name": "start_clean", "description": "Start cleaning", "inputSchema": {"type": "object", "properties": {"rooms": {"type": "array", "items": {"type": "string"}, "description": "Rooms to clean (empty = all)"}, "mode": {"type": "string", "enum": ["vacuum", "mop", "vacuum_and_mop"]}}}},
+      {"name": "stop", "description": "Stop cleaning and stay in place", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "return_dock", "description": "Return to charging dock", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_schedule", "description": "Set daily cleaning schedule", "inputSchema": {"type": "object", "properties": {"time": {"type": "string", "description": "HH:MM in 24h format"}, "days": {"type": "array", "items": {"type": "string", "enum": ["mon","tue","wed","thu","fri","sat","sun"]}}, "rooms": {"type": "array", "items": {"type": "string"}}, "mode": {"type": "string", "enum": ["vacuum", "mop", "vacuum_and_mop"]}}, "required": ["time", "days"]}},
+      {"name": "get_schedule", "description": "Get current cleaning schedules", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_status", "description": "Get battery, state, current room, area cleaned", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_map", "description": "Get room map with names", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_suction", "description": "Set suction power", "inputSchema": {"type": "object", "properties": {"level": {"type": "string", "enum": ["quiet", "standard", "strong", "max"]}}, "required": ["level"]}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "hall", "floor": "3", "zone": "Flat-B304", "model": "RoboVac-X1", "battery_capacity_wh": 72, "dustbin_ml": 400},
+  "tags": ["vacuum", "robot", "cleaning", "scheduled", "mopping", "smart-home"]
+}

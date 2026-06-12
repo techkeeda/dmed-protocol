@@ -57,25 +57,71 @@ configuration, the same way your laptop finds a printer on WiFi.
 ```
 
 1. **MCP Endpoint** broadcasts itself via mDNS (`_dmed._tcp`) or Bluetooth
-2. **DMED Client** discovers it, fetches its `dmed-manifest.json`
+2. **DMED Client** discovers it, fetches its capability card
 3. **User** interacts with the endpoint through natural language via AI
 
-### What a manifest looks like
+### The Vision: Walk In, Discover Everything
+
+```
+📱 You enter your new home for the first time.
+📱 Open the DMED scanner app.
+📱 Instantly see:
+
+   ┌─────────────────────────────────────┐
+   │  🏠 Flat-B304                        │
+   │                                      │
+   │  💡 Lighting                         │
+   │     Hall Light · Room1 · Kitchen     │
+   │                                      │
+   │  🌀 Fans                             │
+   │     Hall Fan · Kitchen Exhaust       │
+   │                                      │
+   │  🤖 Appliances                       │
+   │     Robot Vacuum                     │
+   │                                      │
+   │  ❄️ Climate                          │
+   │     Room1 AC                         │
+   │                                      │
+   │  🔒 Security                         │
+   │     Front Door Lock · Hallway Cam    │
+   │                                      │
+   │  📺 Media                            │
+   │     Living Room TV · Speaker         │
+   │                                      │
+   │  [Add All] [Customize]              │
+   └─────────────────────────────────────┘
+
+📱 Tap "Add All" → devices auto-categorize by type and room.
+📱 Say: "Turn off all lights at midnight"
+📱 Say: "Schedule vacuum for 10am on weekdays"
+📱 Say: "Set AC to 24 degrees"
+```
+
+No apps to install per device. No pairing codes. No cloud accounts.
+Every device speaks DMED, every device is instantly usable.
+
+### What a capability card looks like
 
 ```json
 {
-  "dmed": "0.2",
-  "id": "coffee-machine-kitchen",
-  "name": "Kitchen Coffee Machine",
-  "description": "Smart coffee maker with brew controls",
-  "transport": "mdns",
-  "mcp_endpoint": "http://192.168.1.42:3000/mcp",
-  "actions": [
-    { "id": "brew", "description": "Start brewing", "params": ["strength", "cups"] },
-    { "id": "status", "description": "Get current machine status" }
-  ]
+  "dmed_version": "0.2.0",
+  "instance_id": "lt000001",
+  "name": "Hall Light",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.10:8080/mcp"}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Toggle light on/off"},
+      {"name": "set_brightness", "description": "Set brightness 0-100%"},
+      {"name": "set_color", "description": "Set color by name or hex"}
+    ]
+  },
+  "metadata": {"location": "hall", "zone": "Flat-B304"}
 }
 ```
+
+See [`things/`](things/) for 13 ready-to-use device templates covering lighting, fans, AC, vacuum, locks, cameras, TV, speakers, and more.
 
 ---
 
@@ -203,6 +249,15 @@ npm install && npm run scan
 │   ├── dmed_client.py                      # Python client example
 │   ├── thought_stream.c                    # C server example
 │   └── thought_client.c                    # C client example
+├── things/                                 # Ready-to-use device templates
+│   ├── lighting/                           # Bulbs, strips, dimmers
+│   ├── fans/                               # Ceiling fans, exhaust
+│   ├── appliances/                         # Vacuum, washer
+│   ├── climate/                            # AC, thermostat
+│   ├── security/                           # Locks, cameras
+│   ├── media/                              # TV, speakers
+│   ├── energy/                             # Smart plugs, meters
+│   └── health/                             # Air purifiers, monitors
 ```
 
 ---
@@ -248,6 +303,19 @@ DMED is **complementary, not competing**:
 DMED's primary value is in **local and short-range discovery** — the layer the official
 spec isn't covering. The WAN transport in DMED will be aligned with the final MCP
 Server Cards format as the spec matures.
+
+---
+
+## Use Cases
+
+| Scenario | What Happens |
+|----------|-------------|
+| 🏠 **Move into a new home** | Scan → see all smart devices → add to "My Home" → control everything from one app |
+| ☕ **Enter a coffee shop** | Discover ordering kiosk → "What's on the menu?" → place order via AI |
+| 🏭 **Factory floor** | Tablet discovers all CNC machines → "What's the vibration on spindle 2?" |
+| 🏥 **Hospital room** | Nurse's phone discovers bed sensors → "What's patient 4's heart rate?" |
+| 🏢 **Office** | Laptop discovers meeting room devices → "Book the projector and turn on lights" |
+| 🚗 **EV charging** | Phone discovers charger → "Start charging at off-peak rate" |
 
 ---
 

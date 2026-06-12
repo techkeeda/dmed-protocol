@@ -1,0 +1,22 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "lt000003",
+  "name": "LED Strip",
+  "description": "Addressable RGB LED strip with effects",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.12:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn strip on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_brightness", "description": "Set brightness 0-100%", "inputSchema": {"type": "object", "properties": {"level": {"type": "integer", "minimum": 0, "maximum": 100}}, "required": ["level"]}},
+      {"name": "set_color", "description": "Set solid color", "inputSchema": {"type": "object", "properties": {"color": {"type": "string"}}, "required": ["color"]}},
+      {"name": "set_effect", "description": "Set lighting effect", "inputSchema": {"type": "object", "properties": {"effect": {"type": "string", "enum": ["rainbow", "breathing", "chase", "twinkle", "solid", "gradient"]}, "speed": {"type": "integer", "minimum": 1, "maximum": 10}}, "required": ["effect"]}},
+      {"name": "get_status", "description": "Get current state and active effect", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "room1", "floor": "3", "zone": "Flat-B304", "model": "WS2812B-5M", "led_count": 150},
+  "tags": ["lighting", "led-strip", "rgb", "effects", "smart-home"]
+}

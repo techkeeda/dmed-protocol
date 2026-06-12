@@ -1,0 +1,21 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "lt000002",
+  "name": "Kitchen Light",
+  "description": "Tunable white light with dimming",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.11:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Toggle light on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_brightness", "description": "Set brightness 0-100%", "inputSchema": {"type": "object", "properties": {"level": {"type": "integer", "minimum": 0, "maximum": 100}}, "required": ["level"]}},
+      {"name": "set_color_temperature", "description": "Set warmth (2700K warm, 6500K cool)", "inputSchema": {"type": "object", "properties": {"kelvin": {"type": "integer", "minimum": 2700, "maximum": 6500}}, "required": ["kelvin"]}},
+      {"name": "get_status", "description": "Get current state", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "kitchen", "floor": "3", "zone": "Flat-B304", "model": "TW-E27", "wattage": 12},
+  "tags": ["lighting", "dimmable", "tunable-white", "smart-home"]
+}

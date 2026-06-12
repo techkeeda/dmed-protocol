@@ -1,0 +1,21 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "sc000002",
+  "name": "Hallway Camera",
+  "description": "Indoor security camera with motion detection and two-way audio",
+  "service_type": "security",
+  "transports": [{"type": "http", "url": "http://192.168.1.51:8080/mcp", "priority": 1}],
+  "auth": {"type": "pin", "pin_mechanism": "companion_app"},
+  "capabilities": {
+    "tools": [
+      {"name": "get_snapshot", "description": "Get URL to current camera snapshot", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_motion_events", "description": "Get recent motion detection events", "inputSchema": {"type": "object", "properties": {"count": {"type": "integer", "minimum": 1, "maximum": 20}}}},
+      {"name": "set_motion_detection", "description": "Enable/disable motion alerts", "inputSchema": {"type": "object", "properties": {"enabled": {"type": "boolean"}, "sensitivity": {"type": "string", "enum": ["low", "medium", "high"]}}, "required": ["enabled"]}},
+      {"name": "get_status", "description": "Get camera state, recording status, storage remaining", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "hallway", "floor": "3", "zone": "Flat-B304", "model": "IndoorCam-2K", "resolution": "2K", "storage_gb": 64},
+  "tags": ["camera", "security", "motion-detection", "smart-home"]
+}

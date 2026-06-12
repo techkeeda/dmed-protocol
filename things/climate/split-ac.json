@@ -1,0 +1,24 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "ac000001",
+  "name": "Room1 AC",
+  "description": "Split AC with temperature, mode, and swing control",
+  "service_type": "iot_device",
+  "transports": [{"type": "http", "url": "http://192.168.1.40:8080/mcp", "priority": 1}],
+  "auth": {"type": "none"},
+  "capabilities": {
+    "tools": [
+      {"name": "toggle", "description": "Turn AC on/off", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_temperature", "description": "Set target temperature", "inputSchema": {"type": "object", "properties": {"temp": {"type": "number", "minimum": 16, "maximum": 30}, "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}}, "required": ["temp"]}},
+      {"name": "set_mode", "description": "Set operating mode", "inputSchema": {"type": "object", "properties": {"mode": {"type": "string", "enum": ["cool", "heat", "fan", "dry", "auto"]}}, "required": ["mode"]}},
+      {"name": "set_fan_speed", "description": "Set fan speed", "inputSchema": {"type": "object", "properties": {"speed": {"type": "string", "enum": ["auto", "low", "medium", "high", "turbo"]}}, "required": ["speed"]}},
+      {"name": "set_swing", "description": "Set swing mode", "inputSchema": {"type": "object", "properties": {"vertical": {"type": "boolean"}, "horizontal": {"type": "boolean"}}}},
+      {"name": "set_timer", "description": "Set auto-off timer", "inputSchema": {"type": "object", "properties": {"hours": {"type": "number", "minimum": 0.5, "maximum": 24}}, "required": ["hours"]}},
+      {"name": "get_status", "description": "Get current temp, target temp, mode, fan speed", "inputSchema": {"type": "object", "properties": {}}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "room1", "floor": "3", "zone": "Flat-B304", "model": "Split-1.5T-INV", "capacity_tons": 1.5},
+  "tags": ["ac", "climate", "cooling", "heating", "smart-home"]
+}

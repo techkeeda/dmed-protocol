@@ -1,0 +1,22 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "sc000001",
+  "name": "Front Door Lock",
+  "description": "Smart lock with PIN, fingerprint, and remote control",
+  "service_type": "security",
+  "transports": [{"type": "http", "url": "http://192.168.1.50:8080/mcp", "priority": 1}],
+  "auth": {"type": "pin", "pin_mechanism": "device_screen"},
+  "capabilities": {
+    "tools": [
+      {"name": "lock", "description": "Lock the door", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "unlock", "description": "Unlock the door (requires auth)", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_status", "description": "Get lock state and battery level", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_access_log", "description": "Get recent access events", "inputSchema": {"type": "object", "properties": {"count": {"type": "integer", "minimum": 1, "maximum": 50}}}},
+      {"name": "set_auto_lock", "description": "Enable auto-lock after N seconds", "inputSchema": {"type": "object", "properties": {"enabled": {"type": "boolean"}, "delay_seconds": {"type": "integer", "minimum": 5, "maximum": 300}}, "required": ["enabled"]}}
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {"location": "front_door", "floor": "3", "zone": "Flat-B304", "model": "SmartLock-Pro"},
+  "tags": ["lock", "security", "door", "access-control", "smart-home"]
+}
