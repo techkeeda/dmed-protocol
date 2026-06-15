@@ -1,0 +1,104 @@
+{
+  "dmed_version": "0.2.0",
+  "instance_id": "voip0001",
+  "name": "Home Phone",
+  "description": "VoIP phone system with call history, dialing, and DECT handset management",
+  "service_type": "communication",
+  "transports": [{"type": "http", "url": "http://192.168.1.1:8080/mcp", "priority": 1}],
+  "auth": {"type": "pin", "pin_mechanism": "device_screen"},
+  "capabilities": {
+    "tools": [
+      {
+        "name": "make_call",
+        "description": "Dial a phone number",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "number": {"type": "string", "description": "Phone number to dial"},
+            "line": {"type": "string", "enum": ["fxs", "dect1", "dect2"], "description": "Which phone to ring first (optional, defaults to fxs)"}
+          },
+          "required": ["number"]
+        }
+      },
+      {
+        "name": "get_missed_calls",
+        "description": "Get list of missed calls with caller ID, time, and count",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {"type": "integer", "minimum": 1, "maximum": 50, "description": "Max results (default 10)"}
+          }
+        }
+      },
+      {
+        "name": "get_call_history",
+        "description": "Get recent call history (incoming, outgoing, missed)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["all", "incoming", "outgoing", "missed"]},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 100}
+          }
+        }
+      },
+      {
+        "name": "get_voicemail",
+        "description": "Get voicemail messages (count, from, duration)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "unread_only": {"type": "boolean", "description": "Only show unread messages"}
+          }
+        }
+      },
+      {
+        "name": "redial",
+        "description": "Redial the last outgoing number",
+        "inputSchema": {"type": "object", "properties": {}}
+      },
+      {
+        "name": "get_active_calls",
+        "description": "Get currently active calls (who's on the phone)",
+        "inputSchema": {"type": "object", "properties": {}}
+      },
+      {
+        "name": "hangup",
+        "description": "End the current active call",
+        "inputSchema": {"type": "object", "properties": {}}
+      },
+      {
+        "name": "get_registration_status",
+        "description": "Get SIP registration and line status",
+        "inputSchema": {"type": "object", "properties": {}}
+      },
+      {
+        "name": "get_dect_handsets",
+        "description": "List paired DECT handsets and their status",
+        "inputSchema": {"type": "object", "properties": {}}
+      },
+      {
+        "name": "do_not_disturb",
+        "description": "Enable/disable Do Not Disturb mode",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "schedule": {"type": "string", "description": "Optional: HH:MM-HH:MM (e.g. 22:00-07:00)"}
+          },
+          "required": ["enabled"]
+        }
+      }
+    ],
+    "resources": [],
+    "prompts": []
+  },
+  "metadata": {
+    "location": "hall",
+    "zone": "Flat-B304",
+    "model": "Ooma SunDial",
+    "fxs_ports": 1,
+    "dect_handsets_paired": 2,
+    "sip_provider": "ooma"
+  },
+  "tags": ["voip", "phone", "freeswitch", "calling", "dect", "fxs", "smart-home"]
+}

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMED — Dynamic MCP Endpoint Discovery</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #050810;
+    --surface:   #0D1321;
+    --border:    #1E2D4A;
+    --blue:      #3B82F6;
+    --blue-dim:  #1D4ED8;
+    --cyan:      #22D3EE;
+    --green:     #10B981;
+    --amber:     #F59E0B;
+    --red:       #EF4444;
+    --white:     #F0F4FF;
+    --muted:     #5A7090;
+    --mono:      'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  #stage {
+    width: 100vw; height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── SCENE WRAPPER ── */
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    padding: 48px 56px 60px 56px;
+    overflow: hidden;
+  }
+  .scene.active { opacity: 1; pointer-events: all; }
+
+  /* ── GRID BACKGROUND ── */
+  #grid-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ── SCENE 1: TITLE ── */
+  #s1 { flex-direction: column; gap: 24px; z-index: 10; text-align: center; }
+
+  .title-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeUp 0.6s 0.3s forwards;
+  }
+
+  .title-main {
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeUp 0.7s 0.6s forwards;
+  }
+  .title-main span { color: var(--blue); }
+
+  .title-sub {
+    font-size: clamp(16px, 2vw, 20px);
+    font-weight: 300;
+    color: var(--muted);
+    opacity: 0;
+    animation: fadeUp 0.7s 1s forwards;
+    transform: translateY(12px);
+  }
+
+  .title-tagline {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--green);
+    opacity: 0;
+    animation: fadeUp 0.6s 1.5s forwards;
+    transform: translateY(8px);
+  }
+
+  /* ── SCENE 2: PROBLEM ── */
+  #s2 { flex-direction: column; gap: 0; z-index: 10; max-width: 640px; width: 100%; }
+
+  #s4, #s5 { z-index: 10; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 580px; }
+
+  .problem-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.2s forwards;
+    transform: translateY(8px);
+  }
+
+  .problem-title {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.4s forwards;
+    transform: translateY(12px);
+  }
+
+  .steps-manual {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: rgba(239,68,68,0.06);
+    border: 1px solid rgba(239,68,68,0.15);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #FC8181;
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  .step:nth-child(1) { animation: slideIn 0.5s 0.7s forwards; }
+  .step:nth-child(2) { animation: slideIn 0.5s 1.0s forwards; }
+  .step:nth-child(3) { animation: slideIn 0.5s 1.3s forwards; }
+  .step:nth-child(4) { animation: slideIn 0.5s 1.6s forwards; }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.2);
+    border: 1px solid rgba(239,68,68,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--red);
+    flex-shrink: 0;
+  }
+
+  /* ── SCENE 3: NETWORK MAP ── */
+  #s3 { z-index: 10; flex-direction: column; align-items: center; gap: 16px; }
+
+  .scan-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.2s forwards;
+  }
+
+  #network-canvas {
+    position: relative;
+    width: min(620px, 88vw);
+    height: min(440px, 55vh);
+  }
+
+  svg#net-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible;
+  }
+
+  .device-node {
+    position: absolute;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .device-node.visible { opacity: 1; transform: scale(1); }
+  .device-node.discovered .node-icon { background: rgba(16,185,129,0.15); border-color: var(--green); box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+  .device-node.discovered .node-pulse { border-color: var(--green); }
+
+  .node-icon {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    transition: all 0.4s;
+    position: relative; z-index: 2;
+  }
+
+  .node-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    transition: color 0.4s;
+  }
+  .device-node.discovered .node-label { color: var(--green); }
+
+  /* pulse rings */
+  .pulse-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    border: 1px solid rgba(59,130,246,0.4);
+    animation: pulseRing 2s infinite;
+    opacity: 0;
+  }
+  .pulse-ring:nth-child(2) { animation-delay: 0.5s; }
+  .pulse-ring:nth-child(3) { animation-delay: 1s; }
+  .broadcasting .pulse-ring { opacity: 1; }
+
+  /* client node */
+  #client-node {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 10;
+  }
+  #client-node.visible { transform: translate(-50%, -50%) scale(1); }
+
+  .client-icon {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    background: rgba(59,130,246,0.15);
+    border: 1.5px solid var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 0 32px rgba(59,130,246,0.3);
+    position: relative;
+  }
+
+  /* transport labels on scanning lines */
+  .line-label {
+    opacity: 1;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+  .line-label.visible { opacity: 1; }
+
+  /* protocol badges around scanner */
+  .proto-badge {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--cyan);
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .proto-badge.visible {
+    opacity: 1;
+    transform: scale(1) translateX(var(--tx, 0));
+  }
+  .proto-badge.fade {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  /* scan beam */
+  #scan-beam {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 280px; height: 2px;
+    background: linear-gradient(90deg, rgba(59,130,246,0.8), transparent);
+    transform-origin: left center;
+    transform: translate(0, -50%) rotate(0deg);
+    border-radius: 2px;
+    opacity: 0;
+    filter: blur(0.5px);
+  }
+
+  /* connection lines drawn via SVG */
+  .conn-line {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+    opacity: 0.5;
+    transition: opacity 0.4s, stroke 0.4s, stroke-width 0.4s;
+  }
+  .conn-line.visible {
+    stroke: var(--green);
+    stroke-width: 1.5;
+    opacity: 0.6;
+  }
+
+  /* capability card */
+  .cap-card {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.4s, transform 0.4s;
+    z-index: 20;
+    box-shadow: 0 0 12px rgba(16,185,129,0.15);
+    pointer-events: none;
+  }
+  .cap-card.visible { opacity: 1; transform: translateY(-14px); }
+  .cap-card-title { color: var(--white); font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+
+  /* ── SCENE 4: CHAT ── */
+  #s4 { z-index: 10; flex-direction: column; align-items: center; gap: 20px; width: 90%; max-width: 620px; }
+
+  .chat-header {
+    width: 100%;
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.2s forwards;
+  }
+  .chat-device-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .chat-device-info { flex: 1; }
+  .chat-device-name { font-size: 15px; font-weight: 600; }
+  .chat-device-status {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--green);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.5s infinite;
+  }
+
+  .chat-window {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.5s forwards;
+  }
+
+  .chat-msgs {
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 220px;
+  }
+
+  .msg {
+    display: flex; gap: 10px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .msg.visible { opacity: 1; transform: translateY(0); transition: all 0.4s; }
+
+  .msg-avatar {
+    width: 32px; height: 32px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .msg.user .msg-avatar { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); }
+  .msg.device .msg-avatar { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); }
+
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 420px;
+  }
+  .msg.user .msg-bubble { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.2); }
+  .msg.device .msg-bubble { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); }
+
+  .msg-sender {
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-bottom: 4px;
+    opacity: 0.6;
+  }
+
+  .typing-indicator {
+    display: flex; gap: 4px; align-items: center;
+    padding: 4px 0;
+  }
+  .typing-indicator span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: bounce 1s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+  .chat-input-bar {
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chat-input {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--white);
+    outline: none;
+  }
+
+  /* ── SCENE 4 & 5: CHAT ── */
+  #s4, #s5 { z-index: 10; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 580px; }
+
+  /* ── SCENE 6: OUTRO ── */
+  #s6 { flex-direction: column; gap: 28px; z-index: 10; text-align: center; }
+
+  .outro-title {
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.3s forwards;
+    transform: translateY(16px);
+  }
+
+  .outro-pills {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.9s forwards;
+    transform: translateY(10px);
+  }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .pill.blue  { color: var(--blue);  border-color: rgba(59,130,246,0.3);  background: rgba(59,130,246,0.08); }
+  .pill.green { color: var(--green); border-color: rgba(16,185,129,0.3);  background: rgba(16,185,129,0.08); }
+  .pill.cyan  { color: var(--cyan);  border-color: rgba(34,211,238,0.3);  background: rgba(34,211,238,0.08); }
+
+  .outro-url {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+    opacity: 0;
+    animation: fadeUp 0.6s 1.3s forwards;
+    transform: translateY(8px);
+  }
+  .outro-url a { color: var(--blue); text-decoration: none; }
+
+  /* progress bar */
+  #progress {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--blue);
+    transition: width 0.3s linear;
+    z-index: 100;
+  }
+
+  /* scene indicator */
+  #indicators {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+  }
+  .dot.active { background: var(--blue); transform: scale(1.4); }
+
+  /* ── KEYFRAMES ── */
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulseRing {
+    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scaleY(1); }
+    40%           { transform: scaleY(1.5); }
+  }
+  @keyframes scanRotate {
+    from { transform: translate(0, -50%) rotate(0deg); }
+    to   { transform: translate(0, -50%) rotate(360deg); }
+  }
+  @keyframes dashFlow {
+    to { stroke-dashoffset: -20; }
+  }
+  .conn-line.visible {
+    animation: dashFlow 1s linear infinite;
+  }
+</style>
+</head>
+<body>
+<div id="grid-bg"></div>
+<div id="stage">
+
+  <!-- SCENE 1: TITLE -->
+  <div class="scene active" id="s1">
+    <span class="title-badge">Open Protocol · v0.2 Draft</span>
+    <h1 class="title-main">DMED<br><span>Dynamic MCP</span><br>Endpoint Discovery</h1>
+    <p class="title-sub">MCP servers that find each other — automatically.</p>
+    <p class="title-tagline">📡 mDNS · BLE · Zero Configuration</p>
+  </div>
+
+  <!-- SCENE 2: PROBLEM -->
+  <div class="scene" id="s2">
+    <div class="problem-label">The Problem Today</div>
+    <h2 class="problem-title">Connecting to MCP tools<br>is still manual work.</h2>
+    <div class="steps-manual">
+      <div class="step"><span class="step-num">1</span>Copy the server URL</div>
+      <div class="step"><span class="step-num">2</span>Paste the API key</div>
+      <div class="step"><span class="step-num">3</span>Edit your config file</div>
+      <div class="step"><span class="step-num">4</span>Restart your app</div>
+    </div>
+  </div>
+
+  <!-- SCENE 3: NETWORK DISCOVERY -->
+  <div class="scene" id="s3">
+    <div class="scan-label">DMED Discovery · mDNS + BLE · Live Scan</div>
+    <div id="network-canvas">
+      <svg id="net-svg">
+        <!-- connection lines -->
+        <line id="line-0" class="conn-line" x1="50%" y1="50%" x2="10%"  y2="15%"/>
+        <line id="line-1" class="conn-line" x1="50%" y1="50%" x2="88%"  y2="12%"/>
+        <line id="line-2" class="conn-line" x1="50%" y1="50%" x2="92%"  y2="78%"/>
+        <line id="line-3" class="conn-line" x1="50%" y1="50%" x2="8%"   y2="80%"/>
+        <line id="line-4" class="conn-line" x1="50%" y1="50%" x2="50%"  y2="5%"/>
+        <line id="line-5" class="conn-line" x1="50%" y1="50%" x2="50%"  y2="95%"/>
+
+        <!-- WiFi labels on mDNS lines -->
+        <g id="lbl-0" class="line-label" transform="translate(30%,32%)">
+          <rect rx="6" ry="6" x="-22" y="-11" width="48" height="20" fill="#0D1321" stroke="#22D3EE" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#22D3EE" font-size="9" font-family="monospace" font-weight="600">WiFi</text>
+        </g>
+        <g id="lbl-1" class="line-label" transform="translate(69%,31%)">
+          <rect rx="6" ry="6" x="-22" y="-11" width="48" height="20" fill="#0D1321" stroke="#22D3EE" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#22D3EE" font-size="9" font-family="monospace" font-weight="600">WiFi</text>
+        </g>
+        <g id="lbl-2" class="line-label" transform="translate(71%,64%)">
+          <rect rx="6" ry="6" x="-22" y="-11" width="48" height="20" fill="#0D1321" stroke="#22D3EE" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#22D3EE" font-size="9" font-family="monospace" font-weight="600">WiFi</text>
+        </g>
+        <g id="lbl-3" class="line-label" transform="translate(29%,65%)">
+          <rect rx="6" ry="6" x="-22" y="-11" width="48" height="20" fill="#0D1321" stroke="#22D3EE" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#22D3EE" font-size="9" font-family="monospace" font-weight="600">WiFi</text>
+        </g>
+        <g id="lbl-4" class="line-label" transform="translate(50%,27%)">
+          <rect rx="6" ry="6" x="-22" y="-11" width="48" height="20" fill="#0D1321" stroke="#22D3EE" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#22D3EE" font-size="9" font-family="monospace" font-weight="600">WiFi</text>
+        </g>
+
+        <!-- BLE label on Bluetooth line -->
+        <g id="lbl-5" class="line-label" transform="translate(50%,72%)">
+          <rect rx="6" ry="6" x="-18" y="-11" width="40" height="20" fill="#0D1321" stroke="#A78BFA" stroke-width="0.8" opacity="0.85"/>
+          <text x="2" y="4" text-anchor="middle" fill="#A78BFA" font-size="9" font-family="monospace" font-weight="600">BLE</text>
+        </g>
+      </svg>
+
+      <!-- Devices -->
+      <div class="device-node" id="dev-0" style="left:4%;  top:6%">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">☕</div>
+        <div class="node-label">coffee-machine</div>
+        <div class="cap-card" id="card-0"><div class="cap-card-title">☕ Coffee Machine</div>brew · status · schedule</div>
+      </div>
+      <div class="device-node" id="dev-1" style="right:4%; top:4%">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">🌡️</div>
+        <div class="node-label">temp-sensor</div>
+        <div class="cap-card" id="card-1"><div class="cap-card-title">🌡️ Temp Sensor</div>read · threshold · alert</div>
+      </div>
+      <div class="device-node" id="dev-2" style="right:2%; bottom:10%">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">🗄️</div>
+        <div class="node-label">local-db</div>
+        <div class="cap-card" id="card-2"><div class="cap-card-title">🗄️ Local Database</div>query · insert · schema</div>
+      </div>
+      <div class="device-node" id="dev-3" style="left:2%; bottom:8%">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">📷</div>
+        <div class="node-label">sec-camera</div>
+        <div class="cap-card" id="card-3"><div class="cap-card-title">📷 Security Camera</div>capture · stream · detect</div>
+      </div>
+      <div class="device-node" id="dev-4" style="left:50%; top:0%; transform:translateX(-50%)">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">💡</div>
+        <div class="node-label">smart-light</div>
+        <div class="cap-card" id="card-4"><div class="cap-card-title">💡 Smart Light</div>on · off · dim · color</div>
+      </div>
+      <div class="device-node" id="dev-5" style="left:50%; bottom:0%; transform:translateX(-50%)">
+        <div class="pulse-ring"></div><div class="pulse-ring"></div>
+        <div class="node-icon">🤖</div>
+        <div class="node-label">vacuum-cleaner</div>
+        <div class="cap-card" id="card-5"><div class="cap-card-title">🤖 Vacuum Cleaner · BLE</div>clean · dock · schedule · status</div>
+      </div>
+
+      <!-- DMED Client -->
+      <div id="client-node">
+        <div class="client-icon">🤖</div>
+        <div id="scan-beam"></div>
+        <div class="proto-badge" id="proto-0" style="top:-38px;left:50%;transform:translateX(-50%)">📶 mDNS</div>
+        <div class="proto-badge" id="proto-1" style="top:10px;left:calc(100% + 12px)">🔵 BLE</div>
+        <div class="proto-badge" id="proto-2" style="bottom:-38px;left:50%;transform:translateX(-50%)">🌐 DNS-SD</div>
+        <div class="proto-badge" id="proto-3" style="top:10px;right:calc(100% + 12px)">📡 WiFi</div>
+        <div class="proto-badge" id="proto-4" style="bottom:10px;left:calc(100% + 12px)">🔗 TCP</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: COFFEE CHAT -->
+  <div class="scene" id="s4">
+    <div class="chat-header">
+      <div class="chat-device-icon">☕</div>
+      <div class="chat-device-info">
+        <div class="chat-device-name">Kitchen Coffee Machine</div>
+        <div class="chat-device-status"><span class="status-dot"></span>Discovered via mDNS · 192.168.1.42</div>
+      </div>
+    </div>
+    <div class="chat-window">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-bar">
+        <input class="chat-input" id="chat-input" type="text" placeholder="Talk to any discovered device..." readonly>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: VACUUM CHAT -->
+  <div class="scene" id="s5">
+    <div class="chat-header">
+      <div class="chat-device-icon" style="background:rgba(59,130,246,0.12);border-color:var(--blue)">🤖</div>
+      <div class="chat-device-info">
+        <div class="chat-device-name">Vacuum Cleaner</div>
+        <div class="chat-device-status" style="color:var(--blue)"><span class="status-dot" style="background:var(--blue)"></span>Discovered via BLE · short-range · living-room</div>
+      </div>
+    </div>
+    <div class="chat-window">
+      <div class="chat-msgs" id="vacuum-msgs"></div>
+      <div class="chat-input-bar">
+        <input class="chat-input" id="vacuum-input" type="text" placeholder="Talk to any discovered device..." readonly>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 6: OUTRO -->
+  <div class="scene" id="s6">
+    <h2 class="outro-title">Zero config.<br>Zero setup.<br><span style="color:var(--blue)">Just talk.</span></h2>
+    <div class="outro-pills">
+      <span class="pill blue">mDNS Discovery</span>
+      <span class="pill green">BLE Short-Range</span>
+      <span class="pill cyan">MCP Protocol</span>
+      <span class="pill blue">Python · C · C++</span>
+      <span class="pill green">Apache 2.0 Licensed</span>
+    </div>
+    <p class="outro-url">github.com/<a href="https://github.com/techkeeda/dmed-protocol">techkeeda/dmed-protocol</a></p>
+  </div>
+
+</div>
+
+<div id="progress" style="width:0%"></div>
+<div id="indicators">
+  <div class="dot active"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+</div>
+
+<script>
+const scenes = ['s1','s2','s3','s4','s5','s6'];
+const durations = [6000, 7000, 11000, 11000, 11000, 8000];
+const total = durations.reduce((a,b)=>a+b,0);
+let current = 0;
+let elapsed = 0;
+let sceneStart = 0;
+
+function showScene(idx) {
+  document.querySelectorAll('.scene').forEach((s,i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('#indicators .dot').forEach((d,i)=>{
+    d.classList.toggle('active', i===idx);
+  });
+  current = idx;
+  sceneStart = performance.now();
+  if (idx === 2) startDiscovery();
+  if (idx === 3) startChat();
+  if (idx === 4) startVacuumChat();
+}
+
+// progress bar
+function updateProgress(now) {
+  const pct = Math.min(100, (elapsed + (now - sceneStart)) / total * 100);
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+let lastScene = 0;
+function tick(now) {
+  if (!tick.start) tick.start = now;
+  elapsed = 0;
+  for (let i=0; i<current; i++) elapsed += durations[i];
+  updateProgress(now);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// advance scenes
+let sceneTimer;
+function scheduleNext() {
+  clearTimeout(sceneTimer);
+  sceneTimer = setTimeout(() => {
+    const next = current + 1;
+    if (next < scenes.length) {
+      showScene(next);
+      scheduleNext();
+    }
+  }, durations[current]);
+}
+scheduleNext();
+
+// ── SCENE 3: DISCOVERY ANIMATION ──
+function startDiscovery() {
+  const devices = [0,1,2,3,4];
+  const canvas = document.getElementById('network-canvas');
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+
+  // show devices broadcasting
+  devices.forEach((i, idx) => {
+    setTimeout(() => {
+      const d = document.getElementById('dev-' + i);
+      d.classList.add('visible','broadcasting');
+    }, idx * 250);
+  });
+
+  // show client after 1.2s
+  setTimeout(() => {
+    document.getElementById('client-node').classList.add('visible');
+  }, 1200);
+
+  // scan beam
+  setTimeout(() => {
+    const beam = document.getElementById('scan-beam');
+    beam.style.opacity = '1';
+    beam.style.animation = 'scanRotate 1.8s linear forwards';
+  }, 1600);
+
+  // protocol badges appear one by one during scan
+  [0,1,2,3,4].forEach((i, idx) => {
+    setTimeout(() => {
+      document.getElementById('proto-' + i).classList.add('visible');
+    }, 1700 + idx * 280);
+  });
+
+  // fade badges as devices start getting discovered
+  setTimeout(() => {
+    [0,1,2,3,4].forEach((i, idx) => {
+      setTimeout(() => {
+        const b = document.getElementById('proto-' + i);
+        b.classList.remove('visible');
+        b.classList.add('fade');
+      }, idx * 200);
+    });
+  }, 3800);
+
+  // discover devices one by one
+  const order = [0,4,1,5,2,3];
+  order.forEach((i, idx) => {
+    setTimeout(() => {
+      document.getElementById('dev-'+i).classList.add('discovered');
+      document.getElementById('line-'+i).classList.add('visible');
+      document.getElementById('lbl-'+i).classList.add('visible');
+      setTimeout(()=>{
+        document.getElementById('card-'+i).classList.add('visible');
+      }, 200);
+    }, 2200 + idx * 550);
+  });
+
+  // stop beam
+  setTimeout(() => {
+    document.getElementById('scan-beam').style.opacity = '0';
+  }, 5800);
+}
+
+// ── SCENE 4: CHAT ANIMATION ──
+function startChat() {
+  const msgs = [
+    { role:'user',   avatar:'👤', sender:'You', text: 'Brew me a strong coffee please.' },
+    { role:'device', avatar:'☕', sender:'Coffee Machine', typing: true },
+    { role:'device', avatar:'☕', sender:'Coffee Machine', text: 'Starting brew now — strength set to strong (4/5). Should be ready in about 3 minutes. ☕' },
+    { role:'user',   avatar:'👤', sender:'You', text: 'Can you schedule one every morning at 7am?' },
+    { role:'device', avatar:'☕', sender:'Coffee Machine', typing: true },
+    { role:'device', avatar:'☕', sender:'Coffee Machine', text: 'Done! Daily brew scheduled at 07:00. Strength: strong. I\'ll notify you when it\'s ready.' },
+  ];
+
+  const container = document.getElementById('chat-msgs');
+  const input = document.getElementById('chat-input');
+  let delay = 600;
+
+  const typeText = (el, text, cb) => {
+    let i = 0;
+    const iv = setInterval(() => {
+      el.textContent += text[i++];
+      if (i >= text.length) { clearInterval(iv); if(cb) cb(); }
+    }, 28);
+  };
+
+  msgs.forEach((m, idx) => {
+    setTimeout(() => {
+      if (m.typing) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg device';
+        wrap.id = 'typing-wrap';
+        wrap.innerHTML = `<div class="msg-avatar">${m.avatar}</div>
+          <div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+        container.appendChild(wrap);
+        setTimeout(()=>wrap.remove(), 1100);
+        return;
+      }
+
+      const wrap = document.createElement('div');
+      wrap.className = `msg ${m.role}`;
+      const textEl = document.createElement('span');
+      wrap.innerHTML = `<div class="msg-avatar">${m.avatar}</div>
+        <div class="msg-bubble"><div class="msg-sender">${m.sender}</div></div>`;
+      wrap.querySelector('.msg-bubble').appendChild(textEl);
+      container.appendChild(wrap);
+      wrap.classList.add('visible');
+      container.scrollTop = container.scrollHeight;
+
+      if (m.role === 'user') {
+        input.value = '';
+        typeText(input, m.text, () => {
+          setTimeout(()=>{ input.value=''; }, 300);
+        });
+      }
+      typeText(textEl, m.text);
+
+    }, delay);
+    delay += m.typing ? 500 : 1600;
+  });
+}
+
+// ── SCENE 5: VACUUM CHAT ──
+function startVacuumChat() {
+  const msgs = [
+    { role:'user',   avatar:'👤', sender:'You', text: 'Clean the living room please.' },
+    { role:'device', avatar:'🤖', sender:'Vacuum Cleaner', typing: true },
+    { role:'device', avatar:'🤖', sender:'Vacuum Cleaner', text: 'On it! Starting living room clean. Estimated time: 12 minutes. I\'ll dock when done. 🤖' },
+    { role:'user',   avatar:'👤', sender:'You', text: 'What\'s your battery level?' },
+    { role:'device', avatar:'🤖', sender:'Vacuum Cleaner', typing: true },
+    { role:'device', avatar:'🤖', sender:'Vacuum Cleaner', text: 'Battery at 78% — plenty for this run. I\'ll auto-dock and recharge when I drop below 20%.' },
+  ];
+
+  const container = document.getElementById('vacuum-msgs');
+  const input = document.getElementById('vacuum-input');
+  let delay = 600;
+
+  const typeText = (el, text, cb) => {
+    let i = 0;
+    const iv = setInterval(() => {
+      el.textContent += text[i++];
+      if (i >= text.length) { clearInterval(iv); if(cb) cb(); }
+    }, 28);
+  };
+
+  msgs.forEach((m) => {
+    setTimeout(() => {
+      if (m.typing) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg device';
+        wrap.innerHTML = `<div class="msg-avatar" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3)">${m.avatar}</div>
+          <div class="msg-bubble" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15)"><div class="typing-indicator"><span style="background:var(--blue)"></span><span style="background:var(--blue)"></span><span style="background:var(--blue)"></span></div></div>`;
+        container.appendChild(wrap);
+        setTimeout(()=>wrap.remove(), 1100);
+        return;
+      }
+
+      const wrap = document.createElement('div');
+      wrap.className = `msg ${m.role}`;
+      const textEl = document.createElement('span');
+      const bubbleStyle = m.role === 'device'
+        ? 'style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15)"'
+        : '';
+      const avatarStyle = m.role === 'device'
+        ? 'style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3)"'
+        : '';
+      wrap.innerHTML = `<div class="msg-avatar" ${avatarStyle}>${m.avatar}</div>
+        <div class="msg-bubble" ${bubbleStyle}><div class="msg-sender">${m.sender}</div></div>`;
+      wrap.querySelector('.msg-bubble').appendChild(textEl);
+      container.appendChild(wrap);
+      wrap.classList.add('visible');
+      container.scrollTop = container.scrollHeight;
+
+      if (m.role === 'user') {
+        input.value = '';
+        typeText(input, m.text, () => {
+          setTimeout(()=>{ input.value=''; }, 300);
+        });
+      }
+      typeText(textEl, m.text);
+
+    }, delay);
+    delay += m.typing ? 500 : 1600;
+  });
+}
+
+// click to advance
+document.getElementById('stage').addEventListener('click', () => {
+  clearTimeout(sceneTimer);
+  const next = (current + 1) % scenes.length;
+  showScene(next);
+  scheduleNext();
+});
+</script>
+</body>
+</html>

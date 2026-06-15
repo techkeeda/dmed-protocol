@@ -10,6 +10,8 @@ DMED is an open protocol that enables MCP (Model Context Protocol) endpoints to 
 their capabilities over WiFi, Ethernet, and Bluetooth — so AI clients can automatically
 discover and interact with them with zero manual configuration.
 
+🎬 **[Watch the Interactive Demo →](https://techkeeda.github.io/dmed-protocol/docs/demo.html)**
+
 ---
 
 ## ⚠️ Security Notice
