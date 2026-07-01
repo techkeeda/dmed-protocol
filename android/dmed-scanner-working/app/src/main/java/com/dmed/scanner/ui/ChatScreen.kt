@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,14 +78,14 @@ fun ChatScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Type action name...") },
+                    placeholder = { Text("Ask in natural language...") },
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
-                            viewModel.sendAction(inputText.trim())
+                            viewModel.processMessage(inputText.trim())
                             inputText = ""
                         }
                     }
@@ -109,8 +110,15 @@ fun ChatBubble(message: ChatMessage) {
                 .background(bgColor, RoundedCornerShape(12.dp))
                 .padding(12.dp)
         ) {
-            androidx.compose.foundation.text.selection.SelectionContainer {
-                Text(message.text)
+            if (message.text == "…" && !message.isUser) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(message.text)
+                }
             }
         }
     }

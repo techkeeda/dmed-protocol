@@ -33,7 +33,7 @@ fun ScannerScreen(viewModel: MainViewModel, onEndpointSelected: (DmedEndpoint) -
                 onClick = { if (isScanning) viewModel.stopScan() else viewModel.startScan() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isScanning) "⏹ Stop Scanning" else "🔍 Scan for DMED BLE Devices")
+                Text(if (isScanning) "⏹ Stop Scanning" else "🔍 Scan for DMED Devices")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
