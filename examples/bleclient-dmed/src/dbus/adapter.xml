@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<node>
+	<interface name="org.bluez.Adapter1">
+		<method name="RemoveDevice">
+			<arg type="o" name="device" direction="in" />
+		</method>
+	</interface>
+	<interface name="org.bluez.Device1">
+		<method name="Disconnect"> </method>
+	</interface>
+	
+</node>
