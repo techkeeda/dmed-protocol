@@ -39,9 +39,10 @@ This is the normative JSON Schema for DMED Capability Cards. Implementations MUS
         "iot_device", "media", "appliance", "vehicle", "retail_kiosk",
         "infrastructure", "computing", "ai_service", "data_source",
         "tool_utility", "communication", "health_medical", "industrial",
-        "environmental", "security", "information", "custom"
+        "environmental", "security", "information", "energy",
+        "agriculture", "education", "entertainment", "logistics", "custom"
       ],
-      "description": "Category of service."
+      "description": "Category of service. See Appendix E for full registry."
     },
     "vendor": {
       "type": "object",
@@ -103,7 +104,8 @@ This is the normative JSON Schema for DMED Capability Cards. Implementations MUS
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["http", "https", "ws", "wss", "ble_gatt"]
+          "enum": ["http", "https", "ws", "wss", "ble_gatt", "thread_matter", "usb_serial"],
+          "description": "Transport type. http/https/ws/wss for IP-based; ble_gatt for Bluetooth; thread_matter for Thread/Matter mesh; usb_serial for wired adapter. Additional types may be added in future versions."
         },
         "url": {
           "type": "string",

@@ -20,17 +20,43 @@ Discover → Connect → Interact → Disconnect
 
 ## 1. Purpose
 
-DMED enables automatic discovery of and interaction with MCP endpoints over local networks (WiFi/Ethernet via mDNS, Bluetooth via BLE) and the internet.
+DMED enables physical devices — appliances, phones, sensors, industrial equipment — to broadcast their capabilities over any hardware transport (BLE, WiFi, Ethernet, Thread/Matter, and others) and be discovered and controlled by AI agents with zero manual configuration.
+
+DMED is structured in three tiers:
+
+1. **Protocol** — The capability card format and action dispatch standard (this document)
+2. **Discovery Framework** — A multi-transport SDK that surfaces DMED devices from BLE, mDNS, Ethernet, and more as a unified list (Appendix H)
+3. **MCP Gateway** — A local bridge that exposes discovered DMED devices as MCP tools to remote AI agents over the internet (Appendix I)
 
 ## 2. Scope
 
 DMED covers:
-- **Discovery** — Finding MCP endpoints broadcasting on the network
-- **Connect** — Fetching endpoint capabilities (Card/Manifest)
-- **Interact** — Sending lightweight actions/commands to the endpoint
-- **Full MCP** — Optional full JSON-RPC MCP session for advanced use
+- **Discovery** — Devices broadcast their presence over any supported transport
+- **Connect** — Clients fetch the device's Capability Card to learn its identity and actions
+- **Interact** — Clients send lightweight actions or full MCP JSON-RPC sessions
+- **Bridge** — Optionally, a local DMED-MCP Gateway makes local devices available to remote AI agents via MCP
 
 ## 3. Architecture
+
+### 3.1 Three-Tier Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Tier 3: DMED-MCP Gateway                    WAN / Internet  │
+│  Bridges local DMED devices to MCP                           │
+│  See Appendix I                                              │
+├──────────────────────────────────────────────────────────────┤
+│  Tier 2: DMED Discovery Framework            Local / LAN     │
+│  Multi-transport scanner SDK                                 │
+│  See Appendix H                                              │
+├──────────────────────────────────────────────────────────────┤
+│  Tier 1: DMED Protocol                       The Standard    │
+│  Capability card format + action dispatch                    │
+│  This document                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Protocol Stack (Tier 1 detail)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -44,9 +70,27 @@ DMED covers:
 ├──────────────────────────┼──────────────────────────────────────┤
 │  Layer 2: Discovery      │ mDNS _dmed._tcp / BLE beacon          │
 ├──────────────────────────┼──────────────────────────────────────┤
-│  Layer 1: Transport      │ WiFi / Ethernet / Bluetooth / Internet│
+│  Layer 1: Transport      │ WiFi / Ethernet / Bluetooth /         │
+│                          │ Thread·Matter / Zigbee·Z-Wave /       │
+│                          │ USB·Serial (via adapter daemon)        │
 └──────────────────────────┴──────────────────────────────────────┘
 ```
+
+### 3.3 Relationship to MCP
+
+MCP's official roadmap covers internet-scale discovery via `.well-known/mcp.json` Server Cards — finding AI tools on the public web.
+
+DMED fills the local and short-range layer that MCP does not cover:
+
+| | MCP (official) | DMED |
+|---|---|---|
+| **Scope** | Internet / WAN | Local / BLE / LAN |
+| **Discovery** | `.well-known` URL | BLE beacon / mDNS |
+| **Device type** | Web services, APIs | Physical devices, embedded |
+| **Transport** | HTTPS | Any (BLE, mDNS, Ethernet, …) |
+| **Relationship** | Standard | Extends + bridges to MCP |
+
+The DMED-MCP Gateway (Tier 3) is the bridge between local DMED devices and internet-connected AI agents. See Appendix I.
 
 ## 4. Protocol Lifecycle
 
@@ -195,7 +239,7 @@ When `auth.type` in the Card is not `"none"`, clients must include credentials:
 
 A **DMED v0.2 compliant endpoint** MUST:
 1. Broadcast via at least one transport (mDNS or BLE)
-2. Serve `/dmed/card` with a valid Capability Card
+2. Serve `/dmed/card` with a valid Capability Card (Appendix A schema)
 3. Serve `/dmed/actions` listing available actions
 4. Accept `POST /dmed/action` and return valid responses
 5. Return appropriate HTTP error codes
@@ -206,15 +250,37 @@ A **DMED v0.2 compliant client** MUST:
 3. Be able to send actions via `POST /dmed/action`
 4. Handle error responses gracefully
 
+A **DMED v0.2 compliant Discovery Framework** MUST:
+1. Support at least two transports simultaneously (e.g. BLE + mDNS)
+2. Deduplicate devices by `instance_id` across transports
+3. Expose a unified device list regardless of which transport found the device
+4. Select transport by `priority` field from the Capability Card
+5. See Appendix H for full requirements
+
+A **DMED v0.2 compliant MCP Gateway** MUST:
+1. Discover local DMED devices via the Discovery Framework
+2. Expose each device action as an MCP tool
+3. Proxy MCP tool calls to the physical device and return results
+4. Require API key authentication for all WAN-accessible endpoints
+5. See Appendix I for full requirements
+
 ---
 
 ## Appendices
 
 See the `spec/` directory for detailed appendices:
-- [A: JSON Schema](./spec/appendix-a-json-schema.md)
-- [B: BLE Transport](./spec/appendix-b-ble-transport.md)
-- [C: mDNS Transport](./spec/appendix-c-mdns-transport.md)
-- [D: Internet Transport](./spec/appendix-d-internet-transport.md)
-- [E: Service Type Registry](./spec/appendix-e-service-types.md)
-- [F: Examples](./spec/appendix-f-examples.md)
-- [G: Implementation Guide](./spec/appendix-g-implementation-guide.md)
+
+**Protocol (Tier 1)**
+- [A: JSON Schema](./spec/appendix-a-json-schema.md) — Normative Capability Card schema
+- [B: BLE Transport](./spec/appendix-b-ble-transport.md) — GATT profile, UUID assignments, beacon format
+- [C: mDNS Transport](./spec/appendix-c-mdns-transport.md) — DNS-SD service type, TXT record fields
+- [D: Internet Transport](./spec/appendix-d-internet-transport.md) — WAN discovery (direct + gateway)
+- [E: Service Type Registry](./spec/appendix-e-service-types.md) — Standard service type codes
+- [F: Examples](./spec/appendix-f-examples.md) — Worked examples for common devices
+- [G: Implementation Guide](./spec/appendix-g-implementation-guide.md) — Step-by-step device implementation
+
+**Discovery Framework (Tier 2)**
+- [H: Discovery Framework](./spec/appendix-h-discovery-framework.md) — Multi-transport SDK specification
+
+**MCP Gateway (Tier 3)**
+- [I: MCP Gateway](./spec/appendix-i-mcp-gateway.md) — Local-to-WAN bridge specification

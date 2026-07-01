@@ -1,6 +1,54 @@
-# Appendix D: Internet Transport Detail (DNS + HTTPS)
+# Appendix D: Internet Transport Detail (DNS + HTTPS + Gateway)
 
-## D.1 Overview
+## D.0 Two WAN Scenarios
+
+There are two distinct ways a DMED device can be accessible over the internet:
+
+### Scenario A — Direct Internet Endpoint
+A device or service is directly hosted on the public internet with its own domain name. Discovery uses DNS TXT records. Capability Cards are served over HTTPS. This is appropriate for cloud-hosted AI services, SaaS tools, and public APIs.
+
+```
+Remote Client
+     │ DNS TXT lookup
+     ↓
+_dmed.api.example.com → card URL → capabilities → MCP session
+```
+
+Sections D.1–D.9 cover this scenario.
+
+### Scenario B — Local Devices Bridged via DMED-MCP Gateway
+Physical devices on a local network (BLE, mDNS, Ethernet) are not directly internet-accessible. A **DMED-MCP Gateway** runs on a local machine, discovers DMED devices using the Discovery Framework (Appendix H), and exposes them as MCP tools to remote AI agents.
+
+```
+Remote Claude / AI Agent
+     │ MCP (HTTPS)
+     ↓
+DMED-MCP Gateway  ← runs on local machine / home server / Pi
+     │
+     ├── BLE → [Embedded device]
+     ├── mDNS → [Coffee machine]
+     └── Ethernet → [Industrial sensor]
+```
+
+This is the recommended approach for making local physical devices WAN-accessible. See Appendix I for the full gateway specification.
+
+### Choosing the Right Scenario
+
+| | Scenario A (Direct) | Scenario B (Gateway) |
+|---|---|---|
+| **Device location** | Public internet | Local network / BLE |
+| **Device type** | Cloud service, SaaS | Physical device, embedded |
+| **Discovery** | DNS TXT record | Gateway auto-discovers |
+| **Access control** | Device handles auth | Gateway enforces allowlist |
+| **Setup** | DNS record + HTTPS cert | Install gateway, configure allowlist |
+
+### Alignment with MCP Server Cards
+
+Anthropic's official MCP roadmap includes `.well-known/mcp.json` Server Cards for internet-scale discovery of MCP tools. DMED Scenario A is complementary — DMED adds structured capability cards, service type classification, and multi-transport metadata on top of the `.well-known` pattern. Implementations MAY serve both `/.well-known/mcp.json` (MCP standard) and `/.well-known/dmed/card` (DMED) from the same server.
+
+---
+
+## D.1 Overview (Scenario A — Direct Internet Endpoint)
 
 The Internet transport binding enables discovery of DMED servers hosted on the public internet. This is used for cloud-hosted AI services, public APIs, and remote MCP endpoints.
 
