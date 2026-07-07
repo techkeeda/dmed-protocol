@@ -18,10 +18,16 @@ discover and interact with them with zero manual configuration.
 
 DMED v0.2 is a **draft protocol intended for local experimentation only**.
 
-- Authentication and authorization are **not yet implemented**
-- Do not expose DMED endpoints on untrusted or public networks
-- Do not use in production environments
-- Security hardening is planned for v1.0
+- Authentication and authorization on individual DMED **devices** are **not yet
+  implemented** — a device's own `/dmed/card` and `/dmed/action` endpoints are
+  unauthenticated by design, trusting the local network
+- Do not expose DMED device endpoints directly on untrusted or public networks
+- Do not use in production environments without the hardening described below
+
+The [MCP Gateway](#mcp-gateway) (`gateway/`) is the one component with real security
+hardening today — TLS, device/action allowlists, and a timing-safe API key — since it's
+the piece meant to be reachable from beyond your LAN. It doesn't change devices' own
+trust model; it's the boundary between your trusted local devices and the outside world.
 
 [See roadmap →](#roadmap)
 
@@ -233,7 +239,9 @@ npm install && npm run scan
 ├── lib/
 │   ├── c/                                  # C library
 │   ├── cpp/                                # C++ library
-│   └── python/                             # Python library
+│   ├── python/                             # Python library
+│   └── js/                                 # TypeScript/JavaScript library + dmed-conform CLI
+├── gateway/                                # MCP Gateway — bridges local devices to remote MCP clients
 ├── docs/
 │   ├── getting-started.md
 │   ├── api-reference-c.md
@@ -282,7 +290,37 @@ The full protocol spec is in [`DMED-protocol-spec-v0.2.md`](./DMED-protocol-spec
 | Python               | `lib/python/` | ✅ Available                                |
 | C                    | `lib/c/`      | ✅ Available                                |
 | C++                  | `lib/cpp/`    | ✅ Available                                |
-| JavaScript/TypeScript | `lib/js/`    | 🔜 Planned — [want to contribute?](./CONTRIBUTING.md) |
+| JavaScript/TypeScript | `lib/js/`    | ✅ Available — also ships the `dmed-conform` conformance CLI |
+
+---
+
+## MCP Gateway
+
+`gateway/` bridges locally-discovered DMED devices to **remote** MCP clients (including
+Claude Desktop) over HTTP — the piece that makes "ask Claude to brew coffee from your
+office" actually work end to end, rather than just on the same LAN.
+
+```bash
+cd gateway
+npm install && npm run build
+cp config.json.example config.json   # set a real apiKey
+npm start
+```
+
+Each discovered device's actions become MCP tools named `{device_slug}__{action_name}`.
+For WAN exposure it supports TLS, device/action allowlists, and a spec-compliant
+[`.well-known/mcp/server-card.json`](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1649).
+Claude Desktop specifically expects a local stdio process rather than raw HTTP — a small
+bundled bridge handles that translation. Full setup, the Claude Desktop config snippet,
+and a Raspberry Pi deployment guide are in [`gateway/README.md`](gateway/README.md) and
+[`docs/deployment/raspberry-pi.md`](docs/deployment/raspberry-pi.md).
+
+Implementers can self-check their own device against the spec, independent of this repo's
+examples, with the conformance CLI:
+
+```bash
+node lib/js/dist/cli.js http://<device-ip>:<port>
+```
 
 ---
 
@@ -335,16 +373,17 @@ are welcome.
 - [x] mDNS/DNS-SD transport
 - [x] Bluetooth BLE transport spec
 - [x] Internet/WAN transport spec
-- [x] Reference libraries (C, C++, Python)
+- [x] Reference libraries (C, C++, Python, JavaScript/TypeScript)
 - [x] AI prompt library for code generation
 - [x] Working examples (Node.js, Python, C)
 - [x] Interaction protocol (lightweight actions) — v0.2
-- [ ] JavaScript / TypeScript library
-- [ ] Mobile client reference app
-- [ ] Security & authentication hardening
-- [ ] Alignment with MCP Server Cards (official spec)
+- [x] Android scanner reference app with natural-language device control
+- [x] MCP Gateway — bridges local devices to remote MCP clients, incl. Claude Desktop
+- [x] Security & authentication hardening (gateway: TLS, allowlists, timing-safe API key)
+- [x] Alignment with MCP Server Cards (`.well-known/mcp/server-card.json`, SEP-1649)
+- [x] Conformance test CLI (`dmed-conform`)
 - [ ] GitHub Discussions for community feedback
-- [ ] Protocol v1.0 finalization
+- [ ] Protocol v1.0 finalization (spec itself is still v0.2 draft)
 
 ---
 
