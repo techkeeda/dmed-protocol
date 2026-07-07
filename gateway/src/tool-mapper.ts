@@ -1,5 +1,6 @@
 import type { DmedDevice } from '@dmed/discovery'
-import type { McpTool, ToolRegistry } from './types.js'
+import { isActionAllowed, isDeviceAllowed } from './allowlist.js'
+import type { AllowlistConfig, McpTool, ToolRegistry } from './types.js'
 
 const MAX_SLUG_LENGTH = 32
 
@@ -26,11 +27,13 @@ export function createRegistry(): ToolRegistry {
   return { tools: new Map(), devices: new Map() }
 }
 
-export function registerDevice(registry: ToolRegistry, device: DmedDevice): void {
+export function registerDevice(registry: ToolRegistry, device: DmedDevice, allowlist?: AllowlistConfig): void {
   const slug = slugify(device.name)
+  if (!isDeviceAllowed(allowlist, slug)) return
   registry.devices.set(slug, device)
   for (const tool of toolsFromCard(device)) {
     const action = tool.name.slice(slug.length + 2)
+    if (!isActionAllowed(allowlist, slug, action)) continue
     registry.tools.set(tool.name, { tool, deviceSlug: slug, action })
   }
 }

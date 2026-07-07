@@ -17,7 +17,19 @@ export interface ToolRegistry {
   devices: Map<string, DmedDevice>
 }
 
+export interface TlsConfig {
+  cert: string
+  key: string
+}
+
+export interface AllowlistConfig {
+  devices?: string[]
+  actions?: Record<string, string[]>
+}
+
 export interface GatewayConfig {
   apiKey: string
   port?: number
+  tls?: TlsConfig
+  allowlist?: AllowlistConfig
 }

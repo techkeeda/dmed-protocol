@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
 import { loadConfig } from './auth.js'
 import { GatewayDiscovery } from './discovery.js'
+import { startListening } from './listen.js'
 import { createRegistry, registerDevice, unregisterDevice } from './tool-mapper.js'
 import { createServer } from './server.js'
 
@@ -13,7 +14,7 @@ async function main(): Promise<void> {
   const registry = createRegistry()
   const discovery = new GatewayDiscovery()
   discovery.on('device', device => {
-    registerDevice(registry, device)
+    registerDevice(registry, device, config.allowlist)
     console.error(`[Gateway] + ${device.name} (${registry.tools.size} tools registered)`)
   })
   discovery.on('lost', device => {
@@ -23,9 +24,10 @@ async function main(): Promise<void> {
   discovery.start()
 
   const app = createServer(registry, config)
-  app.listen(port, () => {
-    console.error(`[Gateway] DMED Gateway listening on :${port}`)
-    console.error(`[Gateway] MCP endpoint: POST http://localhost:${port}/mcp`)
+  const scheme = config.tls ? 'https' : 'http'
+  startListening(app, config, port, () => {
+    console.error(`[Gateway] DMED Gateway listening on :${port} (${scheme})`)
+    console.error(`[Gateway] MCP endpoint: POST ${scheme}://localhost:${port}/mcp`)
   })
 }
 

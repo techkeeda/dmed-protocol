@@ -3,7 +3,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NextFunction, Request, Response } from 'express'
-import { ConfigError, apiKeyAuth, loadConfig } from '../src/auth.js'
+import { ConfigError, apiKeyAuth, loadConfig, safeCompare } from '../src/auth.js'
 
 function makeReq(apiKey: string | undefined): Request {
   return { header: (name: string) => (name.toLowerCase() === 'x-api-key' ? apiKey : undefined) } as unknown as Request
@@ -21,6 +21,25 @@ function makeRes() {
   }) as unknown as Response['json']
   return res
 }
+
+describe('safeCompare', () => {
+  it('returns true for identical strings', () => {
+    expect(safeCompare('secret-key', 'secret-key')).toBe(true)
+  })
+
+  it('returns false for different strings of the same length', () => {
+    expect(safeCompare('secret-key', 'secret-kex')).toBe(false)
+  })
+
+  it('returns false (not throws) for strings of different lengths', () => {
+    expect(() => safeCompare('short', 'a-much-longer-secret')).not.toThrow()
+    expect(safeCompare('short', 'a-much-longer-secret')).toBe(false)
+  })
+
+  it('returns false when compared against an empty string', () => {
+    expect(safeCompare('', 'secret-key')).toBe(false)
+  })
+})
 
 describe('apiKeyAuth middleware', () => {
   const config = { apiKey: 'secret-key' }
@@ -79,6 +98,37 @@ describe('loadConfig', () => {
   it('throws ConfigError when apiKey is missing from the config file', () => {
     const path = join(dir, 'config.json')
     writeFileSync(path, JSON.stringify({ port: 4100 }))
+    expect(() => loadConfig(path)).toThrow(ConfigError)
+  })
+
+  it('loads successfully when tls is omitted', () => {
+    const path = join(dir, 'config.json')
+    writeFileSync(path, JSON.stringify({ apiKey: 'k' }))
+    expect(() => loadConfig(path)).not.toThrow()
+  })
+
+  it('loads successfully when tls cert and key files both exist', () => {
+    const certPath = join(dir, 'cert.pem')
+    const keyPath = join(dir, 'key.pem')
+    writeFileSync(certPath, 'fake-cert')
+    writeFileSync(keyPath, 'fake-key')
+    const path = join(dir, 'config.json')
+    writeFileSync(path, JSON.stringify({ apiKey: 'k', tls: { cert: certPath, key: keyPath } }))
+    const config = loadConfig(path)
+    expect(config.tls?.cert).toBe(certPath)
+  })
+
+  it('throws ConfigError when tls cert file does not exist', () => {
+    const keyPath = join(dir, 'key.pem')
+    writeFileSync(keyPath, 'fake-key')
+    const path = join(dir, 'config.json')
+    writeFileSync(path, JSON.stringify({ apiKey: 'k', tls: { cert: join(dir, 'missing-cert.pem'), key: keyPath } }))
+    expect(() => loadConfig(path)).toThrow(ConfigError)
+  })
+
+  it('throws ConfigError when tls is present but cert/key are not strings', () => {
+    const path = join(dir, 'config.json')
+    writeFileSync(path, JSON.stringify({ apiKey: 'k', tls: {} }))
     expect(() => loadConfig(path)).toThrow(ConfigError)
   })
 })

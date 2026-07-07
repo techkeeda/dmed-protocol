@@ -118,4 +118,26 @@ describe('registry', () => {
     expect(registry.tools.has('smart_lamp__turn_on')).toBe(true)
     expect(registry.devices.has('smart_lamp')).toBe(true)
   })
+
+  it('registerDevice excludes a device not present in the allowlist', () => {
+    const registry = createRegistry()
+    const device = makeDevice('Smart Coffee Machine', [{ name: 'brew_coffee', description: 'Brew coffee' }])
+    registerDevice(registry, device, { devices: ['smart_lamp'] })
+    expect(registry.devices.has('smart_coffee_machine')).toBe(false)
+    expect(registry.tools.size).toBe(0)
+  })
+
+  it('registerDevice includes only allowlisted actions for an allowlisted device', () => {
+    const registry = createRegistry()
+    const device = makeDevice('Smart Coffee Machine', [
+      { name: 'brew_coffee', description: 'Brew coffee' },
+      { name: 'get_status', description: 'Get status' }
+    ])
+    registerDevice(registry, device, {
+      devices: ['smart_coffee_machine'],
+      actions: { smart_coffee_machine: ['get_status'] }
+    })
+    expect(registry.tools.has('smart_coffee_machine__get_status')).toBe(true)
+    expect(registry.tools.has('smart_coffee_machine__brew_coffee')).toBe(false)
+  })
 })
