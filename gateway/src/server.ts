@@ -1,10 +1,9 @@
 import express, { type Express, type Request, type Response } from 'express'
 import { apiKeyAuth } from './auth.js'
+import { PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION } from './constants.js'
 import { DeviceNotFoundError, ToolNotFoundError, dispatchToolCall, resolveToolCall } from './proxy.js'
+import { buildServerCard } from './server-card.js'
 import type { GatewayConfig, ToolRegistry } from './types.js'
-
-export const SERVER_NAME = 'DMED Gateway'
-export const SERVER_VERSION = '0.1.0'
 
 interface JsonRpcRequest {
   jsonrpc?: string
@@ -16,6 +15,14 @@ interface JsonRpcRequest {
 export function createServer(registry: ToolRegistry, config: GatewayConfig): Express {
   const app = express()
   app.use(express.json())
+
+  // Unauthenticated by design (SEP-1649): discovery happens before a client has
+  // credentials, and the spec explicitly forbids putting secrets in this document.
+  app.get('/.well-known/mcp/server-card.json', (req: Request, res: Response) => {
+    const endpoint = `${req.protocol}://${req.get('host')}/mcp`
+    res.json(buildServerCard(endpoint))
+  })
+
   app.use(apiKeyAuth(config))
 
   app.post('/mcp', async (req: Request, res: Response) => {
@@ -26,7 +33,7 @@ export function createServer(registry: ToolRegistry, config: GatewayConfig): Exp
         jsonrpc: '2.0',
         id,
         result: {
-          protocolVersion: '2025-03-26',
+          protocolVersion: PROTOCOL_VERSION,
           capabilities: { tools: {} },
           serverInfo: { name: SERVER_NAME, version: SERVER_VERSION }
         }

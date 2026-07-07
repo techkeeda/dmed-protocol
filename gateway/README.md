@@ -27,7 +27,37 @@ Edit `config.json` and set a real `apiKey`:
 ```
 
 The gateway refuses to start if `config.json` is missing or has no `apiKey` — there is no
-hardcoded fallback key.
+hardcoded fallback key. `X-API-Key` is compared with a constant-time hash comparison, not
+`===`, so a wrong guess can't be narrowed down by response timing.
+
+### Exposing this to the WAN (optional)
+
+Local-only use (LAN, trusted network) needs nothing beyond the above — every discovered
+device is exposed. Before exposing the gateway to the internet, add:
+
+```json
+{
+  "apiKey": "a-long-random-string",
+  "port": 4100,
+  "tls": {
+    "cert": "/path/to/fullchain.pem",
+    "key": "/path/to/privkey.pem"
+  },
+  "allowlist": {
+    "devices": ["smart_coffee_machine"],
+    "actions": { "smart_coffee_machine": ["get_status"] }
+  }
+}
+```
+
+- **`tls`** — starts the server over HTTPS using the given cert/key instead of plain HTTP.
+  For real deployments, a reverse proxy (Caddy, nginx) with automatic cert renewal in front
+  of plain HTTP is usually simpler than managing certs here directly — either works.
+- **`allowlist`** — omit entirely to expose every discovered device and action (the
+  Phase 3 default). Once set, only listed device slugs appear in `tools/list` at all;
+  `actions` further narrows a listed device to specific action names (e.g. read-only
+  remotely, full control locally). `loadConfig` fails fast if `tls` is set but the cert/key
+  files don't exist — misconfiguration is caught at startup, not on the first request.
 
 ## Running
 
@@ -61,6 +91,19 @@ curl -X POST http://localhost:4100/mcp \
 
 Supported methods: `initialize`, `notifications/initialized`, `tools/list`, `tools/call`.
 
+### Discovery: `.well-known/mcp/server-card.json`
+
+Per [SEP-1649](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1649),
+the gateway also serves an unauthenticated MCP Server Card:
+
+```bash
+curl http://localhost:4100/.well-known/mcp/server-card.json
+```
+
+No `X-API-Key` needed — discovery happens before a client has credentials, and per spec
+this document must never contain secrets (it doesn't; it only describes the auth *scheme*,
+not the key).
+
 ### Connecting an MCP client
 
 This implements the JSON-RPC method surface of MCP over a plain HTTP POST endpoint. Most
@@ -88,8 +131,12 @@ card-fetch and action-dispatch calls through the gateway.
 | File | Responsibility |
 |---|---|
 | `src/discovery.ts` | Browses `_dmed._tcp` via `bonjour-service`, fetches each device's card, feeds `@dmed/discovery`'s `DmedDiscovery` base class |
-| `src/tool-mapper.ts` | `slugify()`, `toolsFromCard()`, and the in-memory tool/device registry |
+| `src/tool-mapper.ts` | `slugify()`, `toolsFromCard()`, and the in-memory tool/device registry (allowlist-filtered) |
+| `src/allowlist.ts` | `isDeviceAllowed()` / `isActionAllowed()` — pure functions over `config.allowlist` |
 | `src/proxy.ts` | Resolves an MCP tool name back to a device + action, dispatches via `@dmed/discovery`'s `dispatchAction()` |
-| `src/auth.ts` | Loads `config.json`, `X-API-Key` middleware |
-| `src/server.ts` | Express app implementing the MCP JSON-RPC methods |
+| `src/auth.ts` | Loads and validates `config.json`, `X-API-Key` middleware (constant-time comparison) |
+| `src/listen.ts` | Picks plain HTTP or HTTPS (`config.tls`) to start the server |
+| `src/server.ts` | Express app: MCP JSON-RPC methods + the unauthenticated `.well-known` route |
+| `src/server-card.ts` | Builds the SEP-1649 MCP Server Card document |
+| `src/constants.ts` | Shared server name/version/protocol version constants |
 | `src/index.ts` | Wires discovery → registry → server and starts listening |
