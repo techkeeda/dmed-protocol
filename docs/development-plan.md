@@ -2143,13 +2143,86 @@ describe('Gateway integration (requires npm start in smart-coffee-machine/)', ()
 
 # Phase 4 — v1.0
 
-Full details in `docs/architecture.md` roadmap section. Key additions:
+**Goal:** harden the gateway for safe WAN exposure, give third-party implementers a
+self-check tool, align with the ratified MCP Server Cards discovery spec, and document a
+real deployment target.
 
-- Conformance test CLI (`dmed-conform <url>`) — automated checklist any implementer can run
-- TLS + API key hardening in gateway
-- Device and action allowlists (config file)
-- Alignment with MCP Server Cards `.well-known/mcp.json` format
-- Raspberry Pi setup guide
+---
+
+## P4.1 — Config schema: TLS + allowlists
+
+**Files:** `gateway/src/types.ts`, `gateway/src/auth.ts`
+
+Added `TlsConfig { cert, key }` and `AllowlistConfig { devices?, actions? }` to
+`GatewayConfig`. `loadConfig` validates the cert/key files exist at startup when `tls` is
+present, so misconfiguration fails fast instead of on the first request. No allowlist
+configured = allow-all, preserving Phase 3 behavior for LAN-only use.
+
+## P4.2 — Allowlist enforcement
+
+**Files:** `gateway/src/allowlist.ts` (new), `gateway/src/tool-mapper.ts`
+
+`isDeviceAllowed()` / `isActionAllowed()` are pure functions over `AllowlistConfig`, wired
+into `registerDevice()`. A non-allowlisted device never enters the registry at all — it's
+absent from `tools/list` and any `tools/call` on it resolves as `ToolNotFoundError`.
+`allowlist.actions` further narrows an allowlisted device to specific action names.
+
+## P4.3 — TLS support
+
+**File:** `gateway/src/listen.ts` (new)
+
+`startListening()` picks `https.createServer` (given `config.tls`) or plain `app.listen`.
+The `https` factory is dependency-injected so unit tests don't need real certs; verified
+separately end-to-end with an actual self-signed cert over real TLS 1.3.
+
+## P4.4 — API key hardening
+
+**File:** `gateway/src/auth.ts`
+
+`X-API-Key` comparison hashes both sides (SHA-256) before `crypto.timingSafeEqual`, so
+comparison time no longer leaks how many characters of a guess matched — a fixed-length
+digest sidesteps the length-mismatch branch a naive constant-time compare would still leak.
+
+## P4.5 — Conformance CLI: `dmed-conform`
+
+**Files:** `lib/js/src/conformance.ts`, `lib/js/src/cli.ts` (both new)
+
+Added to `lib/js` (it only exercises the SDK's own `parseCard`/`fetchCard`) rather than a
+new package. Non-mutating by default: validates `/dmed/card`, required fields, tool
+well-formedness, `/dmed/actions` count matches `capabilities.tools`, correct 400/404 on
+missing/unknown actions, and `transports` shape. `--call <action>` opts into one live
+dispatch; `--json` for CI. Tested against in-process fixture servers (good and deliberately
+broken), not `examples/`, keeping `lib/js` self-contained.
+
+## P4.6 — MCP Server Cards alignment (SEP-1649)
+
+**Files:** `gateway/src/server-card.ts`, `gateway/src/constants.ts` (both new)
+
+Unauthenticated `GET /.well-known/mcp/server-card.json`, registered before the
+`apiKeyAuth` middleware — discovery has to work before a client has credentials, and the
+spec forbids secrets in this document. The transport endpoint is built from the request's
+actual protocol/host, so it's correct behind a reverse proxy without hardcoding a public
+hostname. SEP-1960 (a separate, less-mature `.well-known/mcp` manifest proposal) is out of
+scope until it stabilizes.
+
+## P4.7 — Raspberry Pi deployment guide
+
+**File:** `docs/deployment/raspberry-pi.md` (new)
+
+Node setup, building `gateway` plus its `lib/js` dependency, a systemd unit, the
+mDNS-needs-same-L2-segment caveat, two WAN-exposure paths (reverse-proxy TLS vs the
+gateway's built-in TLS), and a security checklist tying together allowlist/TLS/API-key.
+
+---
+
+### Phase 4 Definition of Done
+
+- [x] Device/action allowlists enforced, tested (default allow-all preserves Phase 3 behavior)
+- [x] Gateway can run over TLS from a local cert/key; timing-safe API key comparison
+- [x] `dmed-conform <url>` runs and passes against smart-coffee-machine; correctly fails on a broken card fixture
+- [x] Gateway serves `.well-known/mcp/server-card.json` unauthenticated, spec-shaped, no secrets
+- [x] Raspberry Pi guide published in `docs/`
+- [x] All new code covered by tests — `lib/js` 25/25, `gateway` 58/58
 
 ---
 
