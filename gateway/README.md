@@ -106,13 +106,37 @@ not the key).
 
 ### Connecting an MCP client
 
-This implements the JSON-RPC method surface of MCP over a plain HTTP POST endpoint. Most
-desktop MCP clients (including Claude Desktop) expect a stdio-transport server or the full
-Streamable HTTP transport (session headers, SSE upgrade). This gateway does not yet
-implement session handling or SSE, so wiring it into Claude Desktop directly requires a
-small stdio↔HTTP bridge in front of `/mcp` (or use it directly via `curl`/any HTTP-capable
-MCP client for now). Full Streamable HTTP / Claude Desktop compatibility is tracked for a
-later pass.
+This implements the JSON-RPC method surface of MCP over a plain HTTP POST endpoint, not
+the full Streamable HTTP transport (session headers, SSE) that desktop MCP clients
+normally expect. Any generic HTTP-capable MCP client can talk to it directly (see the
+curl examples above). For **Claude Desktop**, which spawns a local stdio process rather
+than speaking HTTP directly, use the bundled bridge:
+
+```json
+{
+  "mcpServers": {
+    "dmed-gateway": {
+      "command": "node",
+      "args": ["/absolute/path/to/gateway/dist/stdio-bridge.js"],
+      "env": {
+        "DMED_GATEWAY_URL": "http://localhost:4100",
+        "DMED_GATEWAY_API_KEY": "a-long-random-string"
+      }
+    }
+  }
+}
+```
+
+(In `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS, or the
+equivalent path on your platform.) The bridge reads newline-delimited JSON-RPC from stdin,
+forwards each line to `POST /mcp` with the configured API key, and writes the response
+back to stdout — Claude Desktop never needs to speak HTTP or know the API key is even
+there. Restart Claude Desktop after editing the config.
+
+A native Streamable HTTP implementation (no bridge process needed at all) is a bigger,
+separate piece of work — swapping the hand-rolled JSON-RPC handling in `server.ts` for
+`@modelcontextprotocol/sdk`'s `StreamableHTTPServerTransport` would get most of it "for
+free," but that's tracked separately, not done here.
 
 ## Development
 
@@ -140,3 +164,5 @@ card-fetch and action-dispatch calls through the gateway.
 | `src/server-card.ts` | Builds the SEP-1649 MCP Server Card document |
 | `src/constants.ts` | Shared server name/version/protocol version constants |
 | `src/index.ts` | Wires discovery → registry → server and starts listening |
+| `src/bridge.ts` | `handleLine()` — forwards one line of stdio JSON-RPC to `POST /mcp` |
+| `src/stdio-bridge.ts` | CLI entry point Claude Desktop spawns; wraps `bridge.ts` over stdin/stdout |
